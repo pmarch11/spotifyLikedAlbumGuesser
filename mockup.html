@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spotify Album Guesser — UI Mockup</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+
+    /* Blur simulation */
+    .blur-heavy { filter: blur(18px); }
+    .blur-medium { filter: blur(10px); }
+    .blur-light  { filter: blur(4px); }
+    .blur-none   { filter: blur(0px); }
+
+    .spotify-green { color: #1DB954; }
+    .bg-spotify { background-color: #1DB954; }
+    .border-spotify { border-color: #1DB954; }
+
+    .screen { display: none; }
+    .screen.active { display: flex; }
+
+    /* Nav pills */
+    .nav-pill {
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      border: 1px solid rgba(255,255,255,.15);
+      color: #aaa;
+      background: transparent;
+    }
+    .nav-pill.active, .nav-pill:hover {
+      background: #1DB954;
+      color: white;
+      border-color: #1DB954;
+    }
+
+    /* Animated glow blobs */
+    @keyframes pulse-blob {
+      0%, 100% { opacity: .18; transform: scale(1); }
+      50%       { opacity: .28; transform: scale(1.08); }
+    }
+    .blob { animation: pulse-blob 5s ease-in-out infinite; }
+    .blob-2 { animation-delay: 2s; }
+    .blob-3 { animation-delay: 4s; }
+
+    /* Guess pill row */
+    .guess-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px 4px 8px;
+      border-radius: 20px;
+      font-size: 13px; font-weight: 500;
+      background: rgba(239,68,68,.12);
+      border: 1px solid rgba(239,68,68,.3);
+      color: #f87171;
+    }
+
+    /* Hint fade-in */
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hint-item { animation: fadeSlideIn .3s ease-out forwards; }
+
+    /* Album art glow */
+    .album-glow {
+      box-shadow:
+        0 0 40px rgba(29,185,84,.25),
+        0 20px 60px rgba(0,0,0,.6);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+  </style>
+</head>
+<body style="background:#111; color:white; min-height:100vh;">
+
+  <!-- ═══════════════════════════════════════
+       TOP NAV — screen switcher
+  ═══════════════════════════════════════ -->
+  <div style="position:fixed; top:0; left:0; right:0; z-index:100; background:rgba(17,17,17,.9); backdrop-filter:blur(12px); border-bottom:1px solid rgba(255,255,255,.08); padding:10px 20px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+    <span style="font-size:12px; color:#666; font-weight:600; text-transform:uppercase; letter-spacing:.05em; margin-right:4px;">Screens:</span>
+    <button class="nav-pill active" onclick="showScreen('login')">Login</button>
+    <button class="nav-pill" onclick="showScreen('game')">Game (Playing)</button>
+    <button class="nav-pill" onclick="showScreen('gameover-won')">Game Over — Won</button>
+    <button class="nav-pill" onclick="showScreen('gameover-lost')">Game Over — Lost</button>
+  </div>
+
+  <div style="padding-top:56px;">
+
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 1 — LOGIN
+  ══════════════════════════════════════════════════════ -->
+  <div id="screen-login" class="screen active" style="min-height:calc(100vh - 56px); flex-direction:column; align-items:center; justify-content:center; position:relative; overflow:hidden; background:#000; padding:24px;">
+
+    <!-- Background blobs -->
+    <div class="blob" style="position:absolute; top:-80px; left:-80px; width:400px; height:400px; background:#1DB954; border-radius:50%; filter:blur(120px); pointer-events:none;"></div>
+    <div class="blob blob-2" style="position:absolute; bottom:-80px; right:-80px; width:400px; height:400px; background:#1ed760; border-radius:50%; filter:blur(120px); pointer-events:none;"></div>
+    <div class="blob blob-3" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:500px; height:500px; background:#7c3aed; border-radius:50%; filter:blur(140px); pointer-events:none;"></div>
+
+    <div style="position:relative; z-index:10; width:100%; max-width:420px; text-align:center;">
+
+      <!-- Icon -->
+      <div style="display:flex; justify-content:center; margin-bottom:28px;">
+        <div style="position:relative;">
+          <div style="width:96px; height:96px; background:linear-gradient(135deg,#1DB954,#1aa34a); border-radius:24px; display:flex; align-items:center; justify-content:center; box-shadow: 0 8px 32px rgba(29,185,84,.5);">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 19V6l12-3v13M9 19c0 1.1-1.34 2-3 2s-3-.9-3-2 1.34-2 3-2 3 .9 3 2zm12-3c0 1.1-1.34 2-3 2s-3-.9-3-2 1.34-2 3-2 3 .9 3 2zM9 10l12-3"/>
+            </svg>
+          </div>
+          <div style="position:absolute; inset:0; background:linear-gradient(135deg,#1DB954,#1aa34a); border-radius:24px; filter:blur(20px); opacity:.6; z-index:-1;"></div>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <h1 style="font-size:clamp(2.2rem,8vw,3.4rem); font-weight:900; line-height:1.1; margin-bottom:14px; letter-spacing:-.02em;">
+        Spotify Album<br/>Guesser
+      </h1>
+      <p style="color:#9ca3af; font-size:1.05rem; line-height:1.6; margin-bottom:36px;">
+        Test your music knowledge — guess albums from your liked songs as the cover gradually reveals itself.
+      </p>
+
+      <!-- Login button -->
+      <button style="width:100%; padding:16px 24px; background:linear-gradient(90deg,#1DB954,#1ed760); border:none; border-radius:100px; color:white; font-size:1.05rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; box-shadow:0 8px 24px rgba(29,185,84,.35); transition:all .2s;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+        Login with Spotify
+      </button>
+
+      <!-- Security badge -->
+      <div style="display:flex; align-items:center; justify-content:center; gap:6px; color:#4b5563; font-size:.8rem; margin-top:16px;">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Secure OAuth 2.0 — read-only access to your library
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 2 — GAME (PLAYING)
+  ══════════════════════════════════════════════════════ -->
+  <div id="screen-game" class="screen" style="min-height:calc(100vh - 56px); flex-direction:column; background:#0a0a0a; padding:0;">
+
+    <!-- Header bar -->
+    <header style="padding:14px 24px; border-bottom:1px solid rgba(255,255,255,.07); display:flex; align-items:center; justify-content:space-between; background:rgba(10,10,10,.9); backdrop-filter:blur(12px); position:sticky; top:56px; z-index:50;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:36px; height:36px; background:linear-gradient(135deg,#1DB954,#1ed760); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 19V6l12-3v13M9 19c0 1.1-1.34 2-3 2s-3-.9-3-2 1.34-2 3-2 3 .9 3 2zm12-3c0 1.1-1.34 2-3 2s-3-.9-3-2 1.34-2 3-2 3 .9 3 2zM9 10l12-3"/>
+          </svg>
+        </div>
+        <span style="font-size:1.1rem; font-weight:800; letter-spacing:-.01em;">Album Guesser</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <!-- Streak badge -->
+        <div style="padding:5px 12px; background:rgba(29,185,84,.1); border:1px solid rgba(29,185,84,.25); border-radius:20px; font-size:.8rem; font-weight:600; color:#1DB954; display:flex; align-items:center; gap:5px;">
+          <svg width="12" height="12" fill="#1DB954" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          3 streak
+        </div>
+        <button style="padding:6px 14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#9ca3af; font-size:.8rem; font-weight:600; cursor:pointer;">
+          Logout
+        </button>
+      </div>
+    </header>
+
+    <!-- Main game area — 2-col on wide, 1-col on narrow -->
+    <div style="flex:1; max-width:960px; margin:0 auto; width:100%; padding:28px 20px; display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start;">
+
+      <!-- LEFT: Album image -->
+      <div>
+        <div style="position:relative; border-radius:20px; overflow:hidden; aspect-ratio:1/1; background:#111;" class="album-glow">
+          <!-- Simulated blurred album art (colourful gradient standing in for real art) -->
+          <div class="blur-heavy" style="width:100%; height:100%; background:linear-gradient(135deg, #1e3a5f 0%, #7c2d9e 35%, #c2185b 65%, #ff6f00 100%); display:flex; align-items:center; justify-content:center; font-size:80px;">
+            🎵
+          </div>
+          <!-- Guess count badge overlay -->
+          <div style="position:absolute; top:12px; right:12px; background:rgba(0,0,0,.7); backdrop-filter:blur(8px); border-radius:20px; padding:5px 12px; font-size:.75rem; font-weight:700; color:white; border:1px solid rgba(255,255,255,.12);">
+            2 / 5 guesses
+          </div>
+        </div>
+
+        <!-- Progress bar (below image) -->
+        <div style="margin-top:14px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span style="font-size:.75rem; color:#6b7280; font-weight:500;">Blur reducing with each guess</span>
+            <span style="font-size:.75rem; color:#1DB954; font-weight:600;">3 left</span>
+          </div>
+          <div style="height:4px; background:rgba(255,255,255,.08); border-radius:4px; overflow:hidden;">
+            <div style="width:40%; height:100%; background:linear-gradient(90deg,#1DB954,#1ed760); border-radius:4px; transition:width .5s ease;"></div>
+          </div>
+          <div style="display:flex; gap:4px; margin-top:8px;">
+            <div style="flex:1; height:3px; border-radius:2px; background:#1DB954;"></div>
+            <div style="flex:1; height:3px; border-radius:2px; background:#1DB954;"></div>
+            <div style="flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.12);"></div>
+            <div style="flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.12);"></div>
+            <div style="flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.12);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Hints + input + previous guesses -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+
+        <!-- Hints revealed -->
+        <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:18px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+            <div style="width:24px; height:24px; background:rgba(29,185,84,.15); border-radius:6px; display:flex; align-items:center; justify-content:center;">
+              <svg width="13" height="13" fill="none" stroke="#1DB954" stroke-width="2.2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+              </svg>
+            </div>
+            <span style="font-size:.75rem; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:.06em;">Hints Unlocked</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div class="hint-item" style="display:flex; align-items:flex-start; gap:10px;">
+              <span style="flex-shrink:0; width:22px; height:22px; background:rgba(29,185,84,.2); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:800; color:#1DB954;">1</span>
+              <span style="color:#e5e7eb; font-size:.9rem; font-weight:500; padding-top:2px;">Released in <strong style="color:white;">2013</strong></span>
+            </div>
+            <div class="hint-item" style="display:flex; align-items:flex-start; gap:10px; animation-delay:.1s;">
+              <span style="flex-shrink:0; width:22px; height:22px; background:rgba(29,185,84,.2); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:800; color:#1DB954;">2</span>
+              <span style="color:#e5e7eb; font-size:.9rem; font-weight:500; padding-top:2px;">Genre: <strong style="color:white;">Indie Rock</strong></span>
+            </div>
+          </div>
+          <div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.06); font-size:.75rem; color:#4b5563;">
+            💡 More hints unlock with each wrong guess
+          </div>
+        </div>
+
+        <!-- Previous guesses -->
+        <div style="background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:16px; padding:16px;">
+          <p style="font-size:.72rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px;">Previous Guesses</p>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            <div class="guess-pill">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+              Rumours
+            </div>
+            <div class="guess-pill">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+              The Dark Side of the Moon
+            </div>
+          </div>
+        </div>
+
+        <!-- Guess input -->
+        <div style="background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:16px; padding:16px;">
+          <p style="font-size:.72rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px;">Your Guess</p>
+          <div style="display:flex; gap:8px;">
+            <input
+              type="text"
+              placeholder="Type an album name…"
+              style="flex:1; padding:11px 14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:11px; color:white; font-size:.9rem; outline:none;"
+            />
+            <button style="padding:11px 20px; background:#1DB954; border:none; border-radius:11px; color:white; font-weight:700; font-size:.9rem; cursor:pointer; white-space:nowrap; box-shadow:0 4px 14px rgba(29,185,84,.3);">
+              Guess
+            </button>
+          </div>
+          <!-- Autocomplete suggestion example -->
+          <div style="margin-top:6px; background:#1a1a1a; border:1px solid rgba(255,255,255,.1); border-radius:10px; overflow:hidden;">
+            <div style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.07); background:rgba(29,185,84,.12);">
+              <div style="font-size:.85rem; font-weight:600; color:white;">AM</div>
+              <div style="font-size:.75rem; color:#9ca3af; margin-top:1px;">Arctic Monkeys</div>
+            </div>
+            <div style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.07);">
+              <div style="font-size:.85rem; font-weight:600; color:#e5e7eb;">Amnesiac</div>
+              <div style="font-size:.75rem; color:#9ca3af; margin-top:1px;">Radiohead</div>
+            </div>
+            <div style="padding:10px 14px;">
+              <div style="font-size:.85rem; font-weight:600; color:#e5e7eb;">American Beauty</div>
+              <div style="font-size:.75rem; color:#9ca3af; margin-top:1px;">Grateful Dead</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Skip -->
+        <div style="text-align:center;">
+          <button style="padding:8px 20px; background:transparent; border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#4b5563; font-size:.8rem; cursor:pointer; transition:all .2s;">
+            Skip this album →
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 3 — GAME OVER (WON)
+  ══════════════════════════════════════════════════════ -->
+  <div id="screen-gameover-won" class="screen" style="min-height:calc(100vh - 56px); flex-direction:column; background:#0a0a0a; padding:0;">
+
+    <!-- Same header -->
+    <header style="padding:14px 24px; border-bottom:1px solid rgba(255,255,255,.07); display:flex; align-items:center; justify-content:space-between; background:rgba(10,10,10,.9); backdrop-filter:blur(12px); position:sticky; top:56px; z-index:50;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:36px; height:36px; background:linear-gradient(135deg,#1DB954,#1ed760); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 19V6l12-3v13M9 19c0 1.1-1.34 2-3 2s-3-.9-3-2 1.34-2 3-2 3 .9 3 2zm12-3c0 1.1-1.34 2-3 2s-3-.9-3-2 1.34-2 3-2 3 .9 3 2zM9 10l12-3"/>
+          </svg>
+        </div>
+        <span style="font-size:1.1rem; font-weight:800; letter-spacing:-.01em;">Album Guesser</span>
+      </div>
+      <button style="padding:6px 14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#9ca3af; font-size:.8rem; font-weight:600; cursor:pointer;">Logout</button>
+    </header>
+
+    <div style="flex:1; max-width:960px; margin:0 auto; width:100%; padding:28px 20px; display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start;">
+
+      <!-- LEFT: Fully revealed album art -->
+      <div>
+        <div style="position:relative; border-radius:20px; overflow:hidden; aspect-ratio:1/1;" class="album-glow">
+          <div class="blur-none" style="width:100%; height:100%; background:linear-gradient(135deg, #1e3a5f 0%, #7c2d9e 35%, #c2185b 65%, #ff6f00 100%); display:flex; align-items:center; justify-content:center; font-size:80px;">
+            🎵
+          </div>
+          <!-- Confetti-style "correct" overlay badge -->
+          <div style="position:absolute; top:12px; left:50%; transform:translateX(-50%); background:rgba(29,185,84,.9); backdrop-filter:blur(8px); border-radius:20px; padding:6px 16px; font-size:.8rem; font-weight:700; color:white; white-space:nowrap;">
+            ✓ Correct!
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Result card -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+
+        <!-- Win banner -->
+        <div style="background:rgba(29,185,84,.08); border:1px solid rgba(29,185,84,.25); border-radius:16px; padding:20px; text-align:center;">
+          <div style="font-size:3rem; margin-bottom:6px;">🎉</div>
+          <h2 style="font-size:1.8rem; font-weight:900; color:#1DB954; margin-bottom:4px;">Got it!</h2>
+          <p style="color:#9ca3af; font-size:.95rem;">You guessed it in <strong style="color:white;">2 tries</strong></p>
+          <!-- Guess dots -->
+          <div style="display:flex; justify-content:center; gap:6px; margin-top:14px;">
+            <div style="width:28px; height:28px; border-radius:50%; background:#1DB954; display:flex; align-items:center; justify-content:center;">
+              <svg width="14" height="14" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+            </div>
+            <div style="width:28px; height:28px; border-radius:50%; background:#1DB954; display:flex; align-items:center; justify-content:center;">
+              <svg width="14" height="14" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <div style="width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.1);"></div>
+            <div style="width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.1);"></div>
+            <div style="width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.1);"></div>
+          </div>
+        </div>
+
+        <!-- Album info -->
+        <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:18px;">
+          <p style="font-size:.72rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;">The Album Was</p>
+          <p style="font-size:1.4rem; font-weight:800; color:white; line-height:1.2; margin-bottom:4px;">AM</p>
+          <p style="color:#9ca3af; font-size:.95rem;">by Arctic Monkeys</p>
+        </div>
+
+        <!-- CTAs -->
+        <button style="width:100%; padding:14px; background:linear-gradient(90deg,#1DB954,#1ed760); border:none; border-radius:12px; color:white; font-weight:700; font-size:1rem; cursor:pointer; box-shadow:0 4px 16px rgba(29,185,84,.3);">
+          Play Again
+        </button>
+        <button style="width:100%; padding:12px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:12px; color:#e5e7eb; font-weight:600; font-size:.9rem; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+          Open in Spotify
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════
+       SCREEN 4 — GAME OVER (LOST)
+  ══════════════════════════════════════════════════════ -->
+  <div id="screen-gameover-lost" class="screen" style="min-height:calc(100vh - 56px); flex-direction:column; background:#0a0a0a; padding:0;">
+
+    <header style="padding:14px 24px; border-bottom:1px solid rgba(255,255,255,.07); display:flex; align-items:center; justify-content:space-between; background:rgba(10,10,10,.9); backdrop-filter:blur(12px); position:sticky; top:56px; z-index:50;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="width:36px; height:36px; background:linear-gradient(135deg,#1DB954,#1ed760); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 19V6l12-3v13M9 19c0 1.1-1.34 2-3 2s-3-.9-3-2 1.34-2 3-2 3 .9 3 2zm12-3c0 1.1-1.34 2-3 2s-3-.9-3-2 1.34-2 3-2 3 .9 3 2zM9 10l12-3"/>
+          </svg>
+        </div>
+        <span style="font-size:1.1rem; font-weight:800; letter-spacing:-.01em;">Album Guesser</span>
+      </div>
+      <button style="padding:6px 14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#9ca3af; font-size:.8rem; font-weight:600; cursor:pointer;">Logout</button>
+    </header>
+
+    <div style="flex:1; max-width:960px; margin:0 auto; width:100%; padding:28px 20px; display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start;">
+
+      <!-- LEFT: Revealed album art -->
+      <div>
+        <div style="position:relative; border-radius:20px; overflow:hidden; aspect-ratio:1/1;" class="album-glow">
+          <div class="blur-none" style="width:100%; height:100%; background:linear-gradient(135deg, #1e3a5f 0%, #7c2d9e 35%, #c2185b 65%, #ff6f00 100%); display:flex; align-items:center; justify-content:center; font-size:80px;">
+            🎵
+          </div>
+        </div>
+
+        <!-- All hints revealed -->
+        <div style="margin-top:14px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:14px; padding:14px;">
+          <p style="font-size:.72rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px;">All Hints</p>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; gap:8px; align-items:flex-start;">
+              <span style="flex-shrink:0; width:20px; height:20px; background:rgba(29,185,84,.15); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.65rem; font-weight:800; color:#1DB954;">1</span>
+              <span style="color:#9ca3af; font-size:.85rem;">Released in <strong style="color:#e5e7eb;">2013</strong></span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:flex-start;">
+              <span style="flex-shrink:0; width:20px; height:20px; background:rgba(29,185,84,.15); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.65rem; font-weight:800; color:#1DB954;">2</span>
+              <span style="color:#9ca3af; font-size:.85rem;">Genre: <strong style="color:#e5e7eb;">Indie Rock</strong></span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:flex-start;">
+              <span style="flex-shrink:0; width:20px; height:20px; background:rgba(29,185,84,.15); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.65rem; font-weight:800; color:#1DB954;">3</span>
+              <span style="color:#9ca3af; font-size:.85rem;"><strong style="color:#e5e7eb;">12</strong> tracks</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:flex-start;">
+              <span style="flex-shrink:0; width:20px; height:20px; background:rgba(29,185,84,.15); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.65rem; font-weight:800; color:#1DB954;">4</span>
+              <span style="color:#9ca3af; font-size:.85rem;">From <strong style="color:#e5e7eb;">Sheffield, UK</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Result + guesses -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+
+        <!-- Lose banner -->
+        <div style="background:rgba(239,68,68,.06); border:1px solid rgba(239,68,68,.2); border-radius:16px; padding:20px; text-align:center;">
+          <div style="font-size:3rem; margin-bottom:6px;">😔</div>
+          <h2 style="font-size:1.8rem; font-weight:900; color:#f87171; margin-bottom:4px;">So Close!</h2>
+          <p style="color:#9ca3af; font-size:.95rem;">Used all 5 guesses</p>
+          <!-- All dots red -->
+          <div style="display:flex; justify-content:center; gap:6px; margin-top:14px;">
+            <div style="width:28px; height:28px; border-radius:50%; background:rgba(239,68,68,.3); border:1px solid rgba(239,68,68,.4); display:flex; align-items:center; justify-content:center;">
+              <svg width="12" height="12" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+            </div>
+            <div style="width:28px; height:28px; border-radius:50%; background:rgba(239,68,68,.3); border:1px solid rgba(239,68,68,.4); display:flex; align-items:center; justify-content:center;">
+              <svg width="12" height="12" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+            </div>
+            <div style="width:28px; height:28px; border-radius:50%; background:rgba(239,68,68,.3); border:1px solid rgba(239,68,68,.4); display:flex; align-items:center; justify-content:center;">
+              <svg width="12" height="12" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+            </div>
+            <div style="width:28px; height:28px; border-radius:50%; background:rgba(239,68,68,.3); border:1px solid rgba(239,68,68,.4); display:flex; align-items:center; justify-content:center;">
+              <svg width="12" height="12" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+            </div>
+            <div style="width:28px; height:28px; border-radius:50%; background:rgba(239,68,68,.3); border:1px solid rgba(239,68,68,.4); display:flex; align-items:center; justify-content:center;">
+              <svg width="12" height="12" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Album reveal -->
+        <div style="background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:18px;">
+          <p style="font-size:.72rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;">The Album Was</p>
+          <p style="font-size:1.4rem; font-weight:800; color:white; line-height:1.2; margin-bottom:4px;">AM</p>
+          <p style="color:#9ca3af; font-size:.95rem;">by Arctic Monkeys</p>
+        </div>
+
+        <!-- Guesses history -->
+        <div style="background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:14px; padding:14px;">
+          <p style="font-size:.72rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px;">Your Guesses</p>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            <div class="guess-pill">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+              Rumours
+            </div>
+            <div class="guess-pill">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+              Dark Side of the Moon
+            </div>
+            <div class="guess-pill">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+              Whatever People Say I Am
+            </div>
+            <div class="guess-pill">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+              Tranquility Base Hotel
+            </div>
+            <div class="guess-pill">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg>
+              Favourite Worst Nightmare
+            </div>
+          </div>
+        </div>
+
+        <!-- CTAs -->
+        <button style="width:100%; padding:14px; background:linear-gradient(90deg,#1DB954,#1ed760); border:none; border-radius:12px; color:white; font-weight:700; font-size:1rem; cursor:pointer; box-shadow:0 4px 16px rgba(29,185,84,.3);">
+          Play Again
+        </button>
+        <button style="width:100%; padding:12px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:12px; color:#e5e7eb; font-weight:600; font-size:.9rem; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+          Open in Spotify
+        </button>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /padding-top wrapper -->
+
+  <script>
+    function showScreen(name) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+      document.getElementById('screen-' + name).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+  </script>
+</body>
+</html>
