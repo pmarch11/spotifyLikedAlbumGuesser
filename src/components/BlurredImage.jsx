@@ -1,24 +1,10 @@
 import { useRef, useEffect, useState } from 'react';
-import type { GameMode } from '../types/spotify';
 
 const COLS = 3;
 const ROWS = 2;
 
-interface BlurredImageProps {
-  imageUrl: string;
-  blurLevel: number;
-  altText: string;
-  mode: GameMode;
-  tileOrder: number[];
-  revealedTileCount: number;
-}
-
-function TileGrid({ imageUrl, tileOrder, revealedTileCount }: {
-  imageUrl: string;
-  tileOrder: number[];
-  revealedTileCount: number;
-}) {
-  const prevent = (e: React.SyntheticEvent) => e.preventDefault();
+function TileGrid({ imageUrl, tileOrder, revealedTileCount }) {
+  const prevent = (e) => e.preventDefault();
 
   return (
     <div
@@ -53,8 +39,8 @@ function TileGrid({ imageUrl, tileOrder, revealedTileCount }: {
   );
 }
 
-export function BlurredImage({ imageUrl, blurLevel, altText, mode, tileOrder, revealedTileCount }: BlurredImageProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export function BlurredImage({ imageUrl, blurLevel, altText, mode, tileOrder, revealedTileCount }) {
+  const canvasRef = useRef(null);
   const [useCssFallback, setUseCssFallback] = useState(false);
 
   useEffect(() => {
@@ -86,12 +72,12 @@ export function BlurredImage({ imageUrl, blurLevel, altText, mode, tileOrder, re
     img.src = imageUrl;
   }, [imageUrl, blurLevel, mode, useCssFallback]);
 
-  const prevent = (e: React.SyntheticEvent) => e.preventDefault();
+  const prevent = (e) => e.preventDefault();
 
   const wrapperClass = 'relative aspect-square w-full rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10';
   const wrapperStyle = {
     boxShadow: '0 0 40px rgba(29,185,84,0.15), 0 20px 60px rgba(0,0,0,0.6)',
-    userSelect: 'none' as const,
+    userSelect: 'none',
   };
 
   if (mode === 'tile') {

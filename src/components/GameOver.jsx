@@ -1,20 +1,4 @@
-import type { Hint, GameAlbum } from '../types/spotify';
 import { findMatchingAlbum, hasMatchingArtist } from '../utils/gameLogic';
-
-interface GameOverProps {
-  won: boolean;
-  albumName: string;
-  artistNames: string[];
-  albumUri: string;
-  guessCount: number;
-  guesses: string[];
-  maxGuesses: number;
-  hints: Hint[];
-  albums: GameAlbum[];
-  currentAlbum: GameAlbum;
-  onPlayAgain: () => void;
-  onSkip?: () => void;
-}
 
 export function GameOver({
   won,
@@ -28,7 +12,7 @@ export function GameOver({
   albums,
   currentAlbum,
   onPlayAgain,
-}: GameOverProps) {
+}) {
   const openInSpotify = () => {
     window.open(albumUri, '_blank');
   };

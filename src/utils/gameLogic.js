@@ -1,8 +1,6 @@
-import type { GameAlbum, SpotifySavedTrack, SpotifySavedAlbum, Hint } from '../types/spotify';
-
 // Extract unique albums from liked songs
-export function extractUniqueAlbums(savedTracks: SpotifySavedTrack[]): GameAlbum[] {
-  const albumMap = new Map<string, GameAlbum>();
+export function extractUniqueAlbums(savedTracks) {
+  const albumMap = new Map();
 
   for (const savedTrack of savedTracks) {
     const { track } = savedTrack;
@@ -14,7 +12,7 @@ export function extractUniqueAlbums(savedTracks: SpotifySavedTrack[]): GameAlbum
 
     if (!albumMap.has(album.id)) {
       // Get all unique artists from all tracks in this album
-      const allArtistNames = new Set<string>();
+      const allArtistNames = new Set();
       album.artists.forEach(artist => allArtistNames.add(artist.name));
 
       // Also add track artists
@@ -28,7 +26,7 @@ export function extractUniqueAlbums(savedTracks: SpotifySavedTrack[]): GameAlbum
         imageUrl: album.images[0].url,
         releaseYear,
         totalTracks: album.total_tracks,
-        mainArtists: album.artists.map((a: { name: string }) => a.name),
+        mainArtists: album.artists.map((a) => a.name),
         allArtists: Array.from(allArtistNames),
         trackTitles: [track.name],
         trackIds: [track.id],
@@ -37,7 +35,7 @@ export function extractUniqueAlbums(savedTracks: SpotifySavedTrack[]): GameAlbum
       });
     } else {
       // If album already exists, add any new artists and track titles from this track
-      const existingAlbum = albumMap.get(album.id)!;
+      const existingAlbum = albumMap.get(album.id);
       track.artists.forEach(artist => {
         if (!existingAlbum.allArtists.includes(artist.name)) {
           existingAlbum.allArtists.push(artist.name);
@@ -57,14 +55,14 @@ export function extractUniqueAlbums(savedTracks: SpotifySavedTrack[]): GameAlbum
 }
 
 // Build album list from saved albums (GET /me/albums)
-export function extractAlbumsFromSaved(savedAlbums: SpotifySavedAlbum[]): GameAlbum[] {
+export function extractAlbumsFromSaved(savedAlbums) {
   return savedAlbums
     .filter(({ album }) => album.images && album.images.length > 0)
     .map(({ album }) => {
       const releaseYear = album.release_date.split('-')[0];
 
       // Collect all unique artists across every track (for featured artist detection)
-      const allArtistNames = new Set<string>(album.artists.map(a => a.name));
+      const allArtistNames = new Set(album.artists.map(a => a.name));
       album.tracks.items.forEach(track =>
         track.artists.forEach(a => allArtistNames.add(a.name))
       );
@@ -88,7 +86,7 @@ export function extractAlbumsFromSaved(savedAlbums: SpotifySavedAlbum[]): GameAl
 }
 
 // Select random album, weighted by number of saved tracks
-export function selectRandomAlbum(albums: GameAlbum[]): GameAlbum | null {
+export function selectRandomAlbum(albums) {
   if (albums.length === 0) return null;
   const weights = albums.map(album => album.trackTitles.length);
   const totalWeight = weights.reduce((sum, w) => sum + w, 0);
@@ -101,7 +99,7 @@ export function selectRandomAlbum(albums: GameAlbum[]): GameAlbum | null {
 }
 
 // Normalize string for comparison
-export function normalizeString(str: string): string {
+export function normalizeString(str) {
   return str
     .toLowerCase()
     .trim()
@@ -110,7 +108,7 @@ export function normalizeString(str: string): string {
 }
 
 // Check if guess matches album name
-export function checkGuess(guess: string, albumName: string): boolean {
+export function checkGuess(guess, albumName) {
   const normalizedGuess = normalizeString(guess);
   const normalizedAlbum = normalizeString(albumName);
 
@@ -118,14 +116,14 @@ export function checkGuess(guess: string, albumName: string): boolean {
 }
 
 // Get featured/collaborating artists (excluding main album artists)
-export function getFeaturedArtists(album: GameAlbum): string[] {
+export function getFeaturedArtists(album) {
   const mainArtistNames = new Set(album.mainArtists);
   return album.allArtists.filter(artist => !mainArtistNames.has(artist));
 }
 
 // Generate hints based on guess number
-export function generateHints(album: GameAlbum, guessNumber: number): Hint[] {
-  const hints: Hint[] = [];
+export function generateHints(album, guessNumber) {
+  const hints = [];
 
   // Hint 1: Release year + track count combined
   if (guessNumber >= 1) {
@@ -173,13 +171,13 @@ export function generateHints(album: GameAlbum, guessNumber: number): Hint[] {
 }
 
 // Calculate blur level based on guess number
-export function calculateBlurLevel(guessNumber: number): number {
+export function calculateBlurLevel(guessNumber) {
   const blurLevels = [40, 30, 20, 12, 5, 0]; // Index 0 is initial, 1-5 are after each guess
   return blurLevels[Math.min(guessNumber, blurLevels.length - 1)];
 }
 
 // Find matching album from user's library based on guess
-export function findMatchingAlbum(guess: string, albums: GameAlbum[]): GameAlbum | null {
+export function findMatchingAlbum(guess, albums) {
   const normalizedGuess = normalizeString(guess);
 
   for (const album of albums) {
@@ -193,7 +191,7 @@ export function findMatchingAlbum(guess: string, albums: GameAlbum[]): GameAlbum
 }
 
 // Check if the guessed album has any matching artists with the target album
-export function hasMatchingArtist(guessedAlbum: GameAlbum, targetAlbum: GameAlbum): boolean {
+export function hasMatchingArtist(guessedAlbum, targetAlbum) {
   const targetArtistNames = new Set(targetAlbum.mainArtists.map(a => normalizeString(a)));
 
   return guessedAlbum.mainArtists.some(artist =>

@@ -10,9 +10,9 @@ const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID || '';
 const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI || 'http://127.0.0.1:8080/callback';
 
 export function useSpotifyAuth() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
 
   // Check for existing token on mount
   useEffect(() => {

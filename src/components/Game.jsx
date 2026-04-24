@@ -4,9 +4,8 @@ import { GuessInput } from './GuessInput';
 import { HintDisplay } from './HintDisplay';
 import { GameOver } from './GameOver';
 import { selectRandomAlbum, checkGuess, generateHints, calculateBlurLevel, findMatchingAlbum, hasMatchingArtist } from '../utils/gameLogic';
-import type { GameAlbum, GameMode, GameState } from '../types/spotify';
 
-function shuffleTiles(): number[] {
+function shuffleTiles() {
   const arr = [0, 1, 2, 3, 4, 5];
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -15,18 +14,12 @@ function shuffleTiles(): number[] {
   return arr;
 }
 
-interface GameProps {
-  albums: GameAlbum[];
-  accessToken: string | null;
-  onLogout: () => void;
-}
-
-export function Game({ albums, accessToken, onLogout }: GameProps) {
-  const [mode, setMode] = useState<GameMode>(() =>
-    (localStorage.getItem('gameMode') as GameMode) ?? 'blur'
+export function Game({ albums, accessToken, onLogout }) {
+  const [mode, setMode] = useState(() =>
+    localStorage.getItem('gameMode') ?? 'blur'
   );
 
-  const [gameState, setGameState] = useState<GameState>({
+  const [gameState, setGameState] = useState({
     currentAlbum: null,
     guesses: [],
     hintsRevealed: [],
@@ -56,13 +49,12 @@ export function Game({ albums, accessToken, onLogout }: GameProps) {
     });
   };
 
-  const handleModeChange = (newMode: GameMode) => {
+  const handleModeChange = (newMode) => {
     setMode(newMode);
     localStorage.setItem('gameMode', newMode);
-    startNewGame();
   };
 
-  const handleGuess = (guess: string) => {
+  const handleGuess = (guess) => {
     if (!gameState.currentAlbum || gameState.gameStatus !== 'playing') return;
 
     const isCorrect = checkGuess(guess, gameState.currentAlbum.name);
@@ -161,7 +153,7 @@ export function Game({ albums, accessToken, onLogout }: GameProps) {
           <div className="flex items-center gap-2.5">
             {/* Mode toggle */}
             <div className="flex items-center bg-white/[0.04] border border-white/[0.08] rounded-lg p-0.5 text-xs font-semibold">
-              {(['blur', 'tile'] as GameMode[]).map(m => (
+              {['blur', 'tile'].map(m => (
                 <button
                   key={m}
                   onClick={() => handleModeChange(m)}
@@ -225,10 +217,10 @@ export function Game({ albums, accessToken, onLogout }: GameProps) {
                   const isSkip = guessWas === '__skip__';
                   const artistMatch = wasUsed && !isSkip && (() => {
                     const matched = findMatchingAlbum(guessWas, albums);
-                    return matched ? hasMatchingArtist(matched, gameState.currentAlbum!) : false;
+                    return matched ? hasMatchingArtist(matched, gameState.currentAlbum) : false;
                   })();
 
-                  let style: React.CSSProperties = {};
+                  let style = {};
                   let icon = null;
                   let base = 'border';
 
@@ -319,7 +311,7 @@ export function Game({ albums, accessToken, onLogout }: GameProps) {
                         const matchedAlbum = findMatchingAlbum(g, albums);
 
                         // Check if artist matches the current album
-                        const artistMatches = matchedAlbum && hasMatchingArtist(matchedAlbum, gameState.currentAlbum!);
+                        const artistMatches = matchedAlbum && hasMatchingArtist(matchedAlbum, gameState.currentAlbum);
 
                         // Display text: "Artist - Album" if matched, otherwise just the guess
                         const displayText = matchedAlbum

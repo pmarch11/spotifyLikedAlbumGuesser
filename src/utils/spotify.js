@@ -4,14 +4,14 @@ const SPOTIFY_AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
 const SPOTIFY_TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
 
 // Generate a random string for PKCE
-export function generateRandomString(length: number): string {
+export function generateRandomString(length) {
   const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const values = crypto.getRandomValues(new Uint8Array(length));
   return values.reduce((acc, x) => acc + possible[x % possible.length], '');
 }
 
 // Generate code challenge from verifier
-export async function generateCodeChallenge(codeVerifier: string): Promise<string> {
+export async function generateCodeChallenge(codeVerifier) {
   const encoder = new TextEncoder();
   const data = encoder.encode(codeVerifier);
   const digest = await crypto.subtle.digest('SHA-256', data);
@@ -23,7 +23,7 @@ export async function generateCodeChallenge(codeVerifier: string): Promise<strin
 }
 
 // Build Spotify authorization URL
-export function getAuthUrl(clientId: string, redirectUri: string, codeChallenge: string): string {
+export function getAuthUrl(clientId, redirectUri, codeChallenge) {
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: 'code',
@@ -38,11 +38,11 @@ export function getAuthUrl(clientId: string, redirectUri: string, codeChallenge:
 
 // Exchange authorization code for access token
 export async function exchangeCodeForToken(
-  code: string,
-  codeVerifier: string,
-  clientId: string,
-  redirectUri: string
-): Promise<{ access_token: string; expires_in: number }> {
+  code,
+  codeVerifier,
+  clientId,
+  redirectUri
+) {
   const params = new URLSearchParams({
     client_id: clientId,
     grant_type: 'authorization_code',
@@ -68,11 +68,11 @@ export async function exchangeCodeForToken(
 
 // Fetch user's liked songs with pagination (retries on 429)
 export async function fetchLikedSongs(
-  accessToken: string,
-  limit: number = 50,
-  offset: number = 0,
+  accessToken,
+  limit = 50,
+  offset = 0,
   retries = 3
-): Promise<any> {
+) {
   const params = new URLSearchParams({
     limit: limit.toString(),
     offset: offset.toString(),
@@ -103,8 +103,8 @@ export async function fetchLikedSongs(
 }
 
 // Fetch all saved albums (handles pagination)
-export async function fetchAllSavedAlbums(accessToken: string): Promise<any[]> {
-  const allAlbums: any[] = [];
+export async function fetchAllSavedAlbums(accessToken) {
+  const allAlbums = [];
   let offset = 0;
   const limit = 50;
   let hasMore = true;
@@ -131,12 +131,12 @@ export async function fetchAllSavedAlbums(accessToken: string): Promise<any[]> {
 
 // Fetch pages in small batches to avoid Spotify rate limits
 async function fetchPagesBatched(
-  accessToken: string,
-  pages: number[],
-  limit: number,
+  accessToken,
+  pages,
+  limit,
   batchSize = 3
-): Promise<any[]> {
-  const results: any[] = [];
+) {
+  const results = [];
   for (let i = 0; i < pages.length; i += batchSize) {
     const batch = pages.slice(i, i + batchSize);
     const responses = await Promise.all(
@@ -153,12 +153,12 @@ async function fetchPagesBatched(
 // Fetch a random sample of up to 1000 liked songs.
 // For libraries <= 1000 songs, fetches everything.
 // For larger libraries, picks 20 random pages (20 × 50 = 1000 songs) in batches.
-export async function fetchAllLikedSongs(accessToken: string): Promise<any[]> {
+export async function fetchAllLikedSongs(accessToken) {
   const limit = 50;
   const targetPages = 20;
 
   const firstResponse = await fetchLikedSongs(accessToken, limit, 0);
-  const total: number = firstResponse.total;
+  const total = firstResponse.total;
   const totalPages = Math.ceil(total / limit);
   const allTracks = [...firstResponse.items];
 
@@ -169,7 +169,7 @@ export async function fetchAllLikedSongs(accessToken: string): Promise<any[]> {
     return allTracks;
   }
 
-  const pageSet = new Set<number>([0]);
+  const pageSet = new Set([0]);
   while (pageSet.size < targetPages) {
     pageSet.add(Math.floor(Math.random() * totalPages));
   }

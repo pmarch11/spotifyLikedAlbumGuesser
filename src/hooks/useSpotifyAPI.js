@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { fetchAllLikedSongs } from '../utils/spotify';
 import { extractUniqueAlbums } from '../utils/gameLogic';
-import type { GameAlbum, SpotifySavedTrack } from '../types/spotify';
 
-export function useSpotifyAPI(accessToken: string | null) {
-  const [albums, setAlbums] = useState<GameAlbum[]>([]);
+export function useSpotifyAPI(accessToken) {
+  const [albums, setAlbums] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!accessToken) {
@@ -27,7 +26,7 @@ export function useSpotifyAPI(accessToken: string | null) {
           return;
         }
 
-        const uniqueAlbums = extractUniqueAlbums(savedTracks as SpotifySavedTrack[]);
+        const uniqueAlbums = extractUniqueAlbums(savedTracks);
 
         if (uniqueAlbums.length === 0) {
           setError('No albums with cover images found in your liked songs.');

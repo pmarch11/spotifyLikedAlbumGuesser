@@ -1,21 +1,12 @@
-import { useState, useRef, useEffect, type FormEvent } from 'react';
-import type { GameAlbum } from '../types/spotify';
+import { useState, useRef, useEffect } from 'react';
 import { normalizeString } from '../utils/gameLogic';
 
-interface GuessInputProps {
-  onGuess: (guess: string) => void;
-  onSkipHint: () => void;
-  disabled: boolean;
-  allAlbums: GameAlbum[];
-  currentAlbumId: string;
-}
-
-export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAlbumId }: GuessInputProps) {
+export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAlbumId: _currentAlbumId }) {
   const [guess, setGuess] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef(null);
+  const suggestionsRef = useRef(null);
 
   // Filter suggestions based on input
   const suggestions = guess.length >= 3
@@ -36,11 +27,11 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
 
   // Handle click outside to close suggestions
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event) => {
       if (
         suggestionsRef.current &&
-        !suggestionsRef.current.contains(event.target as Node) &&
-        !inputRef.current?.contains(event.target as Node)
+        !suggestionsRef.current.contains(event.target) &&
+        !inputRef.current?.contains(event.target)
       ) {
         setShowSuggestions(false);
       }
@@ -49,7 +40,7 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (guess.trim()) {
       onGuess(guess.trim());
@@ -58,13 +49,13 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
     }
   };
 
-  const handleSuggestionClick = (albumName: string) => {
+  const handleSuggestionClick = (albumName) => {
     setGuess(albumName);
     setShowSuggestions(false);
     inputRef.current?.focus();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e) => {
     if (!showSuggestions || suggestions.length === 0) return;
 
     if (e.key === 'ArrowDown') {

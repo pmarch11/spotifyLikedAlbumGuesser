@@ -1,21 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Hint } from '../types/spotify';
 
-interface HintDisplayProps {
-  hints: Hint[];
-  currentGuess: number;
-  maxGuesses: number;
-  accessToken: string | null;
-}
-
-function PreviewButton({ value, accessToken }: { value: string; accessToken: string | null }) {
+function PreviewButton({ value, accessToken }) {
   const isTrackId = value.startsWith('spotify:track:');
   const trackId = isTrackId ? value.replace('spotify:track:', '') : null;
 
-  const [state, setState] = useState<'idle' | 'loading' | 'playing' | 'unavailable'>('idle');
+  const [state, setState] = useState('idle');
   const [secondsLeft, setSecondsLeft] = useState(3);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioRef = useRef(null);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
     return () => {
@@ -24,7 +16,7 @@ function PreviewButton({ value, accessToken }: { value: string; accessToken: str
     };
   }, []);
 
-  const playAudio = (url: string) => {
+  const playAudio = (url) => {
     const audio = new Audio(url);
     audioRef.current = audio;
     audio.play();
@@ -40,7 +32,7 @@ function PreviewButton({ value, accessToken }: { value: string; accessToken: str
         audio.currentTime = 0;
         setState('idle');
         setSecondsLeft(3);
-        clearInterval(intervalRef.current!);
+        clearInterval(intervalRef.current);
       }
     }, 1000);
   };
@@ -109,7 +101,7 @@ function PreviewButton({ value, accessToken }: { value: string; accessToken: str
   );
 }
 
-export function HintDisplay({ hints, currentGuess, maxGuesses, accessToken }: HintDisplayProps) {
+export function HintDisplay({ hints, currentGuess, maxGuesses, accessToken }) {
   return (
     <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-4">
       {/* Header */}
@@ -137,7 +129,7 @@ export function HintDisplay({ hints, currentGuess, maxGuesses, accessToken }: Hi
                 {index + 1}
               </span>
               {hint.type === 'preview' ? (
-                <PreviewButton value={hint.value as string} accessToken={accessToken} />
+                <PreviewButton value={hint.value} accessToken={accessToken} />
               ) : (
                 <span className="text-gray-200 text-sm font-medium leading-snug">{hint.label}</span>
               )}

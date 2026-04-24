@@ -1,9 +1,4 @@
-interface LoginProps {
-  onLogin: () => void;
-  error?: string | null;
-}
-
-export function Login({ onLogin, error }: LoginProps) {
+export function Login({ onLogin, error }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black px-4 relative overflow-hidden">
       {/* Animated background gradients */}
