@@ -7,9 +7,10 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
+  const justClosedRef = useRef(false);
 
   // Filter suggestions based on input
-  const suggestions = guess.length >= 3
+  const suggestions = guess.length >= 2
     ? allAlbums
         .filter(album => {
           const searchTerm = normalizeString(guess);
@@ -21,7 +22,12 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
     : [];
 
   useEffect(() => {
-    setShowSuggestions(suggestions.length > 0 && guess.length >= 3);
+    // Don't reopen if it was just manually closed
+    if (justClosedRef.current) {
+      justClosedRef.current = false;
+      return;
+    }
+    setShowSuggestions(suggestions.length > 0 && guess.length >= 2);
     setSelectedIndex(0);
   }, [guess, suggestions.length]);
 
@@ -33,6 +39,7 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
         !suggestionsRef.current.contains(event.target) &&
         !inputRef.current?.contains(event.target)
       ) {
+        justClosedRef.current = true;
         setShowSuggestions(false);
       }
     };
@@ -45,12 +52,23 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
     if (guess.trim()) {
       onGuess(guess.trim());
       setGuess('');
+      justClosedRef.current = false; // Reset for next input
       setShowSuggestions(false);
+    } else {
+      // If no input, act as skip
+      onSkipHint();
     }
   };
 
-  const handleSuggestionClick = (albumName) => {
-    setGuess(albumName);
+  const handleInputChange = (e) => {
+    justClosedRef.current = false; // Allow dropdown to reopen when typing
+    setGuess(e.target.value);
+  };
+
+  const handleSuggestionClick = (album) => {
+    justClosedRef.current = true;
+    const formattedGuess = `${album.mainArtists.join(', ')} - ${album.name}`;
+    setGuess(formattedGuess);
     setShowSuggestions(false);
     inputRef.current?.focus();
   };
@@ -66,8 +84,9 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
       setSelectedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
     } else if (e.key === 'Enter' && selectedIndex >= 0) {
       e.preventDefault();
-      handleSuggestionClick(suggestions[selectedIndex].name);
+      handleSuggestionClick(suggestions[selectedIndex]);
     } else if (e.key === 'Escape') {
+      justClosedRef.current = true;
       setShowSuggestions(false);
     }
   };
@@ -80,7 +99,7 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
             ref={inputRef}
             type="text"
             value={guess}
-            onChange={(e) => setGuess(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             disabled={disabled}
             placeholder="Type an album name…"
@@ -98,7 +117,7 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
                 <button
                   key={album.id}
                   type="button"
-                  onClick={() => handleSuggestionClick(album.name)}
+                  onClick={() => handleSuggestionClick(album)}
                   className={`w-full px-3.5 py-2.5 text-left transition-colors ${
                     index === selectedIndex
                       ? 'bg-[#1DB954]/15 border-l-2 border-[#1DB954]'
@@ -116,21 +135,11 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
         </div>
 
         <button
-          type="button"
-          onClick={onSkipHint}
-          disabled={disabled}
-          className="px-4 py-2.5 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] hover:border-white/[0.15] text-gray-400 hover:text-white text-sm font-semibold rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
-          title="Skip and reveal next hint"
-        >
-          Skip
-        </button>
-
-        <button
           type="submit"
-          disabled={disabled || !guess.trim()}
+          disabled={disabled}
           className="px-5 py-2.5 bg-[#1DB954] hover:bg-[#1ed760] text-white text-sm font-bold rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-[#1DB954]/20 flex-shrink-0"
         >
-          Guess
+          {guess.trim() ? 'Guess' : 'Skip'}
         </button>
       </div>
     </form>

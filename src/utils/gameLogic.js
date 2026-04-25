@@ -109,9 +109,19 @@ export function normalizeString(str) {
 
 // Check if guess matches album name
 export function checkGuess(guess, albumName) {
-  const normalizedGuess = normalizeString(guess);
   const normalizedAlbum = normalizeString(albumName);
 
+  // Check if guess is in "Artist - Album" format
+  let guessToCheck = guess;
+  if (guess.includes(' - ')) {
+    // Extract just the album part (everything after " - ")
+    const parts = guess.split(' - ');
+    if (parts.length > 1) {
+      guessToCheck = parts.slice(1).join(' - '); // Handle album names that also contain " - "
+    }
+  }
+
+  const normalizedGuess = normalizeString(guessToCheck);
   return normalizedGuess === normalizedAlbum;
 }
 
@@ -178,7 +188,16 @@ export function calculateBlurLevel(guessNumber) {
 
 // Find matching album from user's library based on guess
 export function findMatchingAlbum(guess, albums) {
-  const normalizedGuess = normalizeString(guess);
+  // Extract just the album part if guess is in "Artist - Album" format
+  let guessToCheck = guess;
+  if (guess.includes(' - ')) {
+    const parts = guess.split(' - ');
+    if (parts.length > 1) {
+      guessToCheck = parts.slice(1).join(' - '); // Handle album names that also contain " - "
+    }
+  }
+
+  const normalizedGuess = normalizeString(guessToCheck);
 
   for (const album of albums) {
     const normalizedAlbumName = normalizeString(album.name);

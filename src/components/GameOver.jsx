@@ -20,26 +20,26 @@ export function GameOver({
   const { resultEmoji, resultTitle, resultSubtitle } = !won
     ? { resultEmoji: '😔', resultTitle: 'So Close!', resultSubtitle: 'Used all 5 guesses' }
     : guessCount === 1 ? { resultEmoji: '🔥', resultTitle: 'First Try!', resultSubtitle: 'Absolute legend' }
-    : guessCount === 2 ? { resultEmoji: '🎯', resultTitle: 'Sharp Ears!', resultSubtitle: 'Guessed in 2 tries' }
+    : guessCount === 2 ? { resultEmoji: '🎯', resultTitle: 'Sharp Eyes!', resultSubtitle: 'Guessed in 2 tries' }
     : guessCount === 3 ? { resultEmoji: '🎉', resultTitle: 'Got it!', resultSubtitle: 'Guessed in 3 tries' }
     : guessCount === 4 ? { resultEmoji: '😅', resultTitle: 'Just in Time!', resultSubtitle: 'Guessed in 4 tries' }
     : { resultEmoji: '😤', resultTitle: 'Squeaked Through!', resultSubtitle: 'Guessed in 5 tries' };
 
   return (
-    <div className="flex flex-col gap-4 animate-fadeIn">
-      {/* Result banner */}
-      <div className={`rounded-2xl p-5 text-center border ${won
+    <div className="flex flex-col gap-3 md:gap-4 animate-fadeIn">
+      {/* Result banner - order-2 on mobile, order-1 on desktop */}
+      <div className={`order-2 md:order-1 rounded-2xl p-4 md:p-5 text-center border ${won
         ? 'bg-[#1DB954]/[0.07] border-[#1DB954]/25'
         : 'bg-red-500/[0.06] border-red-500/20'
       }`}>
-        <div className="text-4xl mb-2">{resultEmoji}</div>
-        <h2 className={`text-2xl font-black mb-1 ${won ? 'text-[#1DB954]' : 'text-red-400'}`}>
+        <div className="hidden md:block text-4xl mb-2">{resultEmoji}</div>
+        <h2 className={`text-2xl font-black ${won ? 'text-[#1DB954]' : 'text-red-400'} md:mb-1`}>
           {resultTitle}
         </h2>
-        <p className="text-gray-400 text-sm">{resultSubtitle}</p>
+        <p className="text-gray-400 text-sm mb-3 md:mb-0">{resultSubtitle}</p>
 
-        {/* Guess result dots */}
-        <div className="flex justify-center gap-2 mt-4">
+        {/* Guess result dots - hidden on mobile, shown on desktop */}
+        <div className="hidden md:flex justify-center gap-2 mt-4">
           {Array.from({ length: maxGuesses }).map((_, i) => {
             const isWin = won && i === guessCount - 1;
             const isWrong = i < guesses.length && !isWin;
@@ -80,10 +80,18 @@ export function GameOver({
             );
           })}
         </div>
+
+        {/* Play Again button - mobile only, inside results card */}
+        <button
+          onClick={onPlayAgain}
+          className="md:hidden w-full mt-3 py-2.5 bg-gradient-to-r from-[#1DB954] to-[#1ed760] hover:from-[#1ed760] hover:to-[#1DB954] text-white font-bold text-sm rounded-lg transition-all duration-200 shadow-lg shadow-[#1DB954]/20"
+        >
+          Play Again
+        </button>
       </div>
 
-      {/* Album info */}
-      <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-4">
+      {/* Album info - order-1 on mobile, order-2 on desktop */}
+      <div className="order-1 md:order-2 bg-white/[0.04] border border-white/[0.08] rounded-2xl p-4">
         <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">The Album Was</p>
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -102,9 +110,9 @@ export function GameOver({
         </div>
       </div>
 
-      {/* All hints (always shown) */}
+      {/* All hints (always shown) - order-3 on both mobile and desktop */}
       {hints.length > 0 && (
-        <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
+        <div className="order-3 bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
           <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-3">All Hints</p>
           <div className="space-y-2">
             {hints.map((hint, i) => (
@@ -117,9 +125,9 @@ export function GameOver({
         </div>
       )}
 
-      {/* All guesses (shown on loss) */}
+      {/* All guesses (shown on loss) - order-4 on both mobile and desktop */}
       {!won && guesses.length > 0 && (
-        <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
+        <div className="order-4 bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
           <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-3">Your Guesses</p>
           <div className="flex flex-wrap gap-1.5">
             {guesses.map((g, i) => {
@@ -164,13 +172,6 @@ export function GameOver({
         </div>
       )}
 
-      {/* Action buttons */}
-      <button
-        onClick={onPlayAgain}
-        className="w-full py-3.5 bg-gradient-to-r from-[#1DB954] to-[#1ed760] hover:from-[#1ed760] hover:to-[#1DB954] text-white font-bold text-sm rounded-xl transition-all duration-200 shadow-lg shadow-[#1DB954]/20"
-      >
-        Play Again
-      </button>
     </div>
   );
 }

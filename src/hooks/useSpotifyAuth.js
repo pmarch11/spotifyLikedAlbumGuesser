@@ -7,7 +7,18 @@ import {
 } from '../utils/spotify';
 
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID || '';
-const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI || 'http://127.0.0.1:8080/callback';
+
+// Automatically determine redirect URI based on environment
+const getRedirectUri = () => {
+  if (import.meta.env.VITE_REDIRECT_URI) {
+    return import.meta.env.VITE_REDIRECT_URI;
+  }
+  // Auto-detect based on current hostname
+  const origin = window.location.origin;
+  return `${origin}/callback`;
+};
+
+const REDIRECT_URI = getRedirectUri();
 
 export function useSpotifyAuth() {
   const [accessToken, setAccessToken] = useState(null);

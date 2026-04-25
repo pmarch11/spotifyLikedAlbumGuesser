@@ -14,15 +14,17 @@ export function Login({ onLogin, error }) {
           <div className="relative">
             <div className="w-28 h-28 flex-shrink-0 bg-gradient-to-br from-[#1DB954] to-[#1aa34a] rounded-3xl flex items-center justify-center shadow-2xl shadow-[#1DB954]/50 transform transition-transform hover:scale-105">
               <svg
-                className="w-16 h-16 flex-shrink-0 text-white"
-                width="64"
-                height="64"
-                fill="none"
-                stroke="currentColor"
+                className="w-24 h-24 flex-shrink-0 text-white"
                 viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                {/* Spotify logo arcs */}
+                <path d="M4 5C7.5 3.5 10.5 3.5 14 5C17.5 6.5 19.5 7.5 20 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M5.5 9C8.5 7.8 11.5 7.8 14.5 9C17.5 10.2 19 10.8 19.5 11.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M7 13C9.5 12 12 12 14.5 13C17 14 18 14.5 18.5 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                {/* Question mark */}
+                <path d="M10 19C10 18 10.5 17.5 11.2 17C11.9 16.6 12.2 16.3 12.2 15.5C12.2 14.8 11.7 14.3 11 14.3C10.3 14.3 9.8 14.8 9.8 15.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="11" cy="21.5" r="0.8" fill="currentColor"/>
               </svg>
             </div>
             {/* Glow effect */}
@@ -99,6 +101,21 @@ export function Login({ onLogin, error }) {
           <p>Secure OAuth 2.0 Authentication</p>
         </div>
 
+      </div>
+
+      {/* Credit */}
+      <div className="absolute bottom-6 left-6 z-10">
+        <p className="text-sm text-gray-600">
+          Made by{' '}
+          <a
+            href="https://github.com/pmarch11"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-400 hover:text-[#1DB954] transition-colors underline"
+          >
+            Patric Marchant
+          </a>
+        </p>
       </div>
     </div>
   );
