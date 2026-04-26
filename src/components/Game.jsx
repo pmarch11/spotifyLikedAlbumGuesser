@@ -36,6 +36,22 @@ export function Game({ albums, accessToken, onLogout }) {
     startNewGame();
   }, [albums]);
 
+  // Listen for Enter key on game over screen
+  useEffect(() => {
+    const isGameOver = gameState.gameStatus === 'won' || gameState.gameStatus === 'lost';
+
+    if (!isGameOver) return;
+
+    const handleKeyPress = (e) => {
+      if (e.key === 'Enter') {
+        startNewGame();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [gameState.gameStatus]);
+
   const startNewGame = () => {
     const album = selectRandomAlbum(albums);
     if (!album) return;
@@ -321,8 +337,8 @@ export function Game({ albums, accessToken, onLogout }) {
               />
             ) : (
               <>
-                {/* Hints panel - order-2 on mobile, order-1 on desktop */}
-                <div className="order-2 md:order-1">
+                {/* Hints panel - order-2 on both mobile and desktop */}
+                <div className="order-2">
                   <HintDisplay
                     hints={gameState.hintsRevealed}
                     currentGuess={gameState.guesses.length}
@@ -331,9 +347,9 @@ export function Game({ albums, accessToken, onLogout }) {
                   />
                 </div>
 
-                {/* Previous guesses - order-3 on mobile, order-2 on desktop */}
+                {/* Previous guesses - order-3 on both mobile and desktop */}
                 {gameState.guesses.length > 0 && (
-                  <div className="order-3 md:order-2 bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
+                  <div className="order-3 bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
                     <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-3">Previous Guesses</p>
                     <div className="flex flex-wrap gap-2">
                       {gameState.guesses.map((g, i) => {
@@ -381,8 +397,8 @@ export function Game({ albums, accessToken, onLogout }) {
                   </div>
                 )}
 
-                {/* Guess input - order-1 on mobile, order-3 on desktop */}
-                <div className="order-1 md:order-3 bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
+                {/* Guess input - order-1 on both mobile and desktop */}
+                <div className="order-1 bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
                   <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-3">Your Guess</p>
                   <GuessInput
                     key={gameState.currentAlbum.id}

@@ -1,6 +1,7 @@
 // Extract unique albums from liked songs
 export function extractUniqueAlbums(savedTracks) {
   const albumMap = new Map();
+  const strippedNameMap = new Map(); // Track albums by stripped name for deduplication
 
   for (const savedTrack of savedTracks) {
     const { track } = savedTrack;
@@ -20,9 +21,9 @@ export function extractUniqueAlbums(savedTracks) {
 
       const releaseYear = album.release_date.split('-')[0];
 
-      albumMap.set(album.id, {
+      const newAlbum = {
         id: album.id,
-        name: album.name,
+        name: stripEditionInfo(album.name), // Strip edition info from displayed name
         imageUrl: album.images[0].url,
         releaseYear,
         totalTracks: album.total_tracks,
@@ -32,7 +33,20 @@ export function extractUniqueAlbums(savedTracks) {
         trackIds: [track.id],
         previewUrl: track.preview_url ?? null,
         uri: album.uri,
-      });
+      };
+
+      albumMap.set(album.id, newAlbum);
+
+      // Check for duplicates by stripped name
+      const strippedName = stripEditionInfo(album.name).toLowerCase();
+      if (strippedNameMap.has(strippedName)) {
+        const existingAlbumId = strippedNameMap.get(strippedName);
+        const existingAlbum = albumMap.get(existingAlbumId);
+        // Keep the one with more liked tracks (will be determined at the end)
+        strippedNameMap.set(strippedName, album.id);
+      } else {
+        strippedNameMap.set(strippedName, album.id);
+      }
     } else {
       // If album already exists, add any new artists and track titles from this track
       const existingAlbum = albumMap.get(album.id);
@@ -51,12 +65,36 @@ export function extractUniqueAlbums(savedTracks) {
     }
   }
 
-  return Array.from(albumMap.values());
+  // Deduplicate by stripped name - group albums with same stripped name
+  const strippedGroups = new Map();
+  for (const album of albumMap.values()) {
+    const strippedName = stripEditionInfo(album.name).toLowerCase();
+    if (!strippedGroups.has(strippedName)) {
+      strippedGroups.set(strippedName, []);
+    }
+    strippedGroups.get(strippedName).push(album);
+  }
+
+  // For each group, keep only the album with the most liked tracks
+  const deduplicatedAlbums = [];
+  for (const group of strippedGroups.values()) {
+    if (group.length === 1) {
+      deduplicatedAlbums.push(group[0]);
+    } else {
+      // Keep the one with most liked tracks
+      const bestAlbum = group.reduce((best, current) =>
+        current.trackTitles.length > best.trackTitles.length ? current : best
+      );
+      deduplicatedAlbums.push(bestAlbum);
+    }
+  }
+
+  return deduplicatedAlbums;
 }
 
 // Build album list from saved albums (GET /me/albums)
 export function extractAlbumsFromSaved(savedAlbums) {
-  return savedAlbums
+  const albums = savedAlbums
     .filter(({ album }) => album.images && album.images.length > 0)
     .map(({ album }) => {
       const releaseYear = album.release_date.split('-')[0];
@@ -71,7 +109,7 @@ export function extractAlbumsFromSaved(savedAlbums) {
 
       return {
         id: album.id,
-        name: album.name,
+        name: stripEditionInfo(album.name), // Strip edition info from displayed name
         imageUrl: album.images[0].url,
         releaseYear,
         totalTracks: album.total_tracks,
@@ -83,6 +121,32 @@ export function extractAlbumsFromSaved(savedAlbums) {
         uri: album.uri,
       };
     });
+
+  // Deduplicate by stripped name - group albums with same stripped name
+  const strippedGroups = new Map();
+  for (const album of albums) {
+    const strippedName = stripEditionInfo(album.name).toLowerCase();
+    if (!strippedGroups.has(strippedName)) {
+      strippedGroups.set(strippedName, []);
+    }
+    strippedGroups.get(strippedName).push(album);
+  }
+
+  // For each group, keep only the album with the most tracks (saved albums have all tracks)
+  const deduplicatedAlbums = [];
+  for (const group of strippedGroups.values()) {
+    if (group.length === 1) {
+      deduplicatedAlbums.push(group[0]);
+    } else {
+      // Keep the one with most tracks
+      const bestAlbum = group.reduce((best, current) =>
+        current.trackTitles.length > best.trackTitles.length ? current : best
+      );
+      deduplicatedAlbums.push(bestAlbum);
+    }
+  }
+
+  return deduplicatedAlbums;
 }
 
 // Select random album, weighted by number of saved tracks
@@ -98,18 +162,54 @@ export function selectRandomAlbum(albums) {
   return albums[albums.length - 1];
 }
 
+// Strip edition information from album name
+export function stripEditionInfo(albumName) {
+  const editionKeywords = 'Deluxe|Expanded|Remastered?|Re-?Mastered?|Reissue|Live|Anniversary|Special|Bonus Track|Explicit|Clean|Radio Edit|Single Version|Album Version|Extended|Collector\'s|Edition|Version';
+
+  return albumName
+    // Remove anything in parentheses or brackets containing edition keywords
+    // This handles: (Deluxe), [Remastered], (Expanded & Remastered), (Reissue - Deluxe Edition), etc.
+    .replace(new RegExp(`\\s*[\\(\\[][^()\\[\\]]*?(${editionKeywords})[^()\\[\\]]*?[\\)\\]]\\s*`, 'gi'), '')
+    // Clean up any resulting double spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Normalize string for comparison
 export function normalizeString(str) {
   return str
     .toLowerCase()
     .trim()
+    // Remove accents/diacritics (ö -> o, ü -> u, etc.)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\w\s]/g, '') // Remove punctuation
     .replace(/\s+/g, ' '); // Normalize whitespace
 }
 
+// Fuzzy match search term against target string
+// Returns true if search term approximately matches target
+export function fuzzyMatch(searchTerm, target) {
+  const normalizedSearch = normalizeString(searchTerm);
+  const normalizedTarget = normalizeString(target);
+
+  // Exact substring match
+  if (normalizedTarget.includes(normalizedSearch)) {
+    return true;
+  }
+
+  // Split search into words and check if all words appear in target
+  const searchWords = normalizedSearch.split(' ').filter(w => w.length > 0);
+
+  // All search words must appear as substrings in the target
+  return searchWords.every(word => normalizedTarget.includes(word));
+}
+
 // Check if guess matches album name
 export function checkGuess(guess, albumName) {
-  const normalizedAlbum = normalizeString(albumName);
+  // Strip edition info from both before normalizing
+  const strippedAlbum = stripEditionInfo(albumName);
+  const normalizedAlbum = normalizeString(strippedAlbum);
 
   // Check if guess is in "Artist - Album" format
   let guessToCheck = guess;
@@ -121,7 +221,8 @@ export function checkGuess(guess, albumName) {
     }
   }
 
-  const normalizedGuess = normalizeString(guessToCheck);
+  const strippedGuess = stripEditionInfo(guessToCheck);
+  const normalizedGuess = normalizeString(strippedGuess);
   return normalizedGuess === normalizedAlbum;
 }
 
@@ -197,10 +298,12 @@ export function findMatchingAlbum(guess, albums) {
     }
   }
 
-  const normalizedGuess = normalizeString(guessToCheck);
+  const strippedGuess = stripEditionInfo(guessToCheck);
+  const normalizedGuess = normalizeString(strippedGuess);
 
   for (const album of albums) {
-    const normalizedAlbumName = normalizeString(album.name);
+    const strippedAlbumName = stripEditionInfo(album.name);
+    const normalizedAlbumName = normalizeString(strippedAlbumName);
     if (normalizedGuess === normalizedAlbumName) {
       return album;
     }

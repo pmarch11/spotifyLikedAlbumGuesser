@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { normalizeString } from '../utils/gameLogic';
+import { fuzzyMatch } from '../utils/gameLogic';
 
 export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAlbumId: _currentAlbumId }) {
   const [guess, setGuess] = useState('');
@@ -13,10 +13,10 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
   const suggestions = guess.length >= 2
     ? allAlbums
         .filter(album => {
-          const searchTerm = normalizeString(guess);
-          const albumName = normalizeString(album.name);
-          const artistNames = normalizeString(album.mainArtists.join(' '));
-          return albumName.includes(searchTerm) || artistNames.includes(searchTerm);
+          // Check if search matches album name or artist names
+          const albumName = album.name;
+          const artistNames = album.mainArtists.join(' ');
+          return fuzzyMatch(guess, albumName) || fuzzyMatch(guess, artistNames);
         })
         .slice(0, 8)
     : [];
