@@ -11,19 +11,33 @@ export function GameOver({
   hints,
   albums,
   currentAlbum,
+  streak,
+  goal,
+  gauntletComplete,
+  gauntletFailed,
+  playAgainLabel,
   onPlayAgain,
 }) {
   const openInSpotify = () => {
     window.open(albumUri, '_blank');
   };
 
-  const { resultEmoji, resultTitle, resultSubtitle } = !won
+  const gauntletActive = goal != null;
+
+  const albumResult = !won
     ? { resultEmoji: '😔', resultTitle: 'So Close!', resultSubtitle: 'Used all 5 guesses' }
     : guessCount === 1 ? { resultEmoji: '🔥', resultTitle: 'First Try!', resultSubtitle: 'Absolute legend' }
     : guessCount === 2 ? { resultEmoji: '🎯', resultTitle: 'Sharp Eyes!', resultSubtitle: 'Guessed in 2 tries' }
     : guessCount === 3 ? { resultEmoji: '🎉', resultTitle: 'Got it!', resultSubtitle: 'Guessed in 3 tries' }
     : guessCount === 4 ? { resultEmoji: '😅', resultTitle: 'Just in Time!', resultSubtitle: 'Guessed in 4 tries' }
     : { resultEmoji: '😤', resultTitle: 'Squeaked Through!', resultSubtitle: 'Guessed in 5 tries' };
+
+  // A completed/failed gauntlet gets its own celebratory/somber banner
+  const { resultEmoji, resultTitle, resultSubtitle } = gauntletComplete
+    ? { resultEmoji: '🏆', resultTitle: 'Gauntlet Complete!', resultSubtitle: `You guessed ${goal} in a row` }
+    : gauntletFailed
+    ? { resultEmoji: '💀', resultTitle: 'Gauntlet Failed', resultSubtitle: `Reached ${streak} of ${goal}` }
+    : albumResult;
 
   return (
     <div className="flex flex-col gap-3 md:gap-4 animate-fadeIn">
@@ -37,6 +51,46 @@ export function GameOver({
           {resultTitle}
         </h2>
         <p className="text-gray-400 text-sm mb-3 md:mb-0">{resultSubtitle}</p>
+
+        {/* Gauntlet progress dots - shown mid-run (won an album but goal not yet reached) */}
+        {gauntletActive && !gauntletComplete && !gauntletFailed && (
+          <div className="flex flex-col items-center gap-2 mt-3 md:mt-4">
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {Array.from({ length: goal }).map((_, i) => (
+                <span
+                  key={i}
+                  className={`w-2.5 h-2.5 rounded-full transition-all ${
+                    i < streak ? 'bg-[#1DB954]' : 'bg-white/[0.12]'
+                  }`}
+                />
+              ))}
+            </div>
+            <p className="text-xs font-semibold text-gray-400">{streak} / {goal} — keep the streak alive!</p>
+          </div>
+        )}
+
+        {/* Streak badge (endless mode only) - shown when the streak reaches 2+; hue ramps orange→green */}
+        {!gauntletActive && streak >= 2 && (() => {
+          // 25° (orange) at 1, 141° (Spotify green) at 10+
+          const hue = 25 + 116 * (Math.min(streak, 10) / 10);
+          return (
+            <div className="flex justify-center mt-3 md:mt-4">
+              <div
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border"
+                style={{
+                  backgroundColor: `hsl(${hue} 90% 50% / 0.15)`,
+                  borderColor: `hsl(${hue} 90% 50% / 0.4)`,
+                  color: `hsl(${hue} 90% 60%)`,
+                }}
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2c.5 3-1.5 4.5-2.8 6C7.7 9.8 7 11.4 7 13a5 5 0 0 0 10 .3c.1-2.2-1-4.2-2.3-5.6.3 1.4-.2 2.4-1 2.9.3-2.6-.9-5.3-1.7-8.6z" />
+                </svg>
+                {won ? `${streak} in a row` : `Streak ended at ${streak}`}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Guess result dots - hidden on mobile, shown on desktop */}
         <div className="hidden md:flex justify-center gap-2 mt-4">
@@ -86,7 +140,7 @@ export function GameOver({
           onClick={onPlayAgain}
           className="md:hidden w-full mt-3 py-2.5 bg-gradient-to-r from-[#1DB954] to-[#1ed760] hover:from-[#1ed760] hover:to-[#1DB954] text-white font-bold text-sm rounded-lg transition-all duration-200 shadow-lg shadow-[#1DB954]/20"
         >
-          Play Again
+          {playAgainLabel}
         </button>
       </div>
 

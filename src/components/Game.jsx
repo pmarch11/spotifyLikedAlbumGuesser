@@ -14,12 +14,12 @@ function shuffleTiles() {
   return arr;
 }
 
-export function Game({ albums, accessToken, onLogout }) {
-  const [mode, setMode] = useState(() =>
-    localStorage.getItem('gameMode') ?? 'blur'
-  );
-
+export function Game({ albums, accessToken, mode, goal, onHome }) {
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false);
+  const [streak, setStreak] = useState(0);
+  // Streak value at the moment it was broken, so the loss screen can show it
+  const [lostStreak, setLostStreak] = useState(0);
 
   const [gameState, setGameState] = useState({
     currentAlbum: null,
@@ -44,7 +44,7 @@ export function Game({ albums, accessToken, onLogout }) {
 
     const handleKeyPress = (e) => {
       if (e.key === 'Enter') {
-        startNewGame();
+        handlePlayAgain();
       }
     };
 
@@ -67,9 +67,13 @@ export function Game({ albums, accessToken, onLogout }) {
     });
   };
 
-  const handleModeChange = (newMode) => {
-    setMode(newMode);
-    localStorage.setItem('gameMode', newMode);
+  // Continue / restart after an album ends. In a gauntlet, a finished run
+  // (failed, or goal reached) resets the streak; a mid-run win keeps it going.
+  const handlePlayAgain = () => {
+    if (goal != null && (gameState.gameStatus === 'lost' || streak >= goal)) {
+      setStreak(0);
+    }
+    startNewGame();
   };
 
   const handleGuess = (guess) => {
@@ -81,6 +85,7 @@ export function Game({ albums, accessToken, onLogout }) {
 
     if (isCorrect) {
       const allHints = generateHints(gameState.currentAlbum, gameState.maxGuesses);
+      setStreak(s => s + 1);
       setGameState({
         ...gameState,
         guesses: newGuesses,
@@ -90,6 +95,8 @@ export function Game({ albums, accessToken, onLogout }) {
       });
     } else if (guessNumber >= gameState.maxGuesses) {
       const allHints = generateHints(gameState.currentAlbum, gameState.maxGuesses);
+      setLostStreak(streak);
+      setStreak(0);
       setGameState({
         ...gameState,
         guesses: newGuesses,
@@ -118,6 +125,8 @@ export function Game({ albums, accessToken, onLogout }) {
 
     if (nextHintLevel >= gameState.maxGuesses) {
       const allHints = generateHints(gameState.currentAlbum, gameState.maxGuesses);
+      setLostStreak(streak);
+      setStreak(0);
       setGameState({
         ...gameState,
         guesses: newGuesses,
@@ -138,7 +147,22 @@ export function Game({ albums, accessToken, onLogout }) {
   };
 
   const handleSkip = () => {
+    setStreak(0);
     startNewGame();
+  };
+
+  // Confirm before skipping if it would break an active streak
+  const requestSkip = () => {
+    if (streak > 0) {
+      setShowSkipConfirm(true);
+    } else {
+      handleSkip();
+    }
+  };
+
+  const confirmSkip = () => {
+    setShowSkipConfirm(false);
+    handleSkip();
   };
 
   if (!gameState.currentAlbum) {
@@ -151,6 +175,20 @@ export function Game({ albums, accessToken, onLogout }) {
 
   const isGameOver = gameState.gameStatus !== 'playing';
   const guessesLeft = gameState.maxGuesses - gameState.guesses.length;
+
+  // Gauntlet mode: goal is the target streak. In endless mode goal is null.
+  const gauntletActive = goal != null;
+  const streakDenom = gauntletActive ? goal : 10;
+  const gauntletComplete = gauntletActive && gameState.gameStatus === 'won' && streak >= goal;
+  const gauntletFailed = gauntletActive && gameState.gameStatus === 'lost';
+
+  const playAgainLabel = !gauntletActive
+    ? 'Play Again'
+    : gauntletComplete
+      ? 'New Gauntlet'
+      : gauntletFailed
+        ? 'Try Again'
+        : 'Next Album →';
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
@@ -175,21 +213,32 @@ export function Game({ albums, accessToken, onLogout }) {
 
           {/* Right side */}
           <div className="flex items-center gap-2.5">
-            {/* Mode toggle */}
-            <div className="flex items-center bg-white/[0.04] border border-white/[0.08] rounded-lg p-0.5 text-xs font-semibold">
-              {['blur', 'tile'].map(m => (
-                <button
-                  key={m}
-                  onClick={() => handleModeChange(m)}
-                  className={`px-3 py-1 rounded-md transition-all capitalize ${
-                    mode === m
-                      ? 'bg-[#1DB954] text-white shadow'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
+            {/* Streak counter - hue ramps from orange to green as the streak climbs to its target */}
+            <div
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all duration-300"
+              style={
+                streak > 0
+                  ? (() => {
+                      // 25° (orange) at the start, 141° (Spotify green) at the target
+                      const hue = 25 + 116 * (Math.min(streak, streakDenom) / streakDenom);
+                      return {
+                        backgroundColor: `hsl(${hue} 90% 50% / 0.15)`,
+                        borderColor: `hsl(${hue} 90% 50% / 0.4)`,
+                        color: `hsl(${hue} 90% 60%)`,
+                      };
+                    })()
+                  : {
+                      backgroundColor: 'rgba(255,255,255,0.04)',
+                      borderColor: 'rgba(255,255,255,0.08)',
+                      color: '#6b7280' /* gray-500 */,
+                    }
+              }
+              title={gauntletActive ? 'Gauntlet progress' : 'Correct guesses in a row'}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2c.5 3-1.5 4.5-2.8 6C7.7 9.8 7 11.4 7 13a5 5 0 0 0 10 .3c.1-2.2-1-4.2-2.3-5.6.3 1.4-.2 2.4-1 2.9.3-2.6-.9-5.3-1.7-8.6z" />
+              </svg>
+              {gauntletActive ? `${streak}/${goal}` : streak}
             </div>
             {/* Help button */}
             <button
@@ -210,10 +259,10 @@ export function Game({ albums, accessToken, onLogout }) {
               </div>
             )}
             <button
-              onClick={onLogout}
+              onClick={onHome}
               className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.09] rounded-lg text-gray-400 hover:text-white text-xs font-semibold transition-all"
             >
-              Logout
+              Quit
             </button>
           </div>
         </div>
@@ -311,10 +360,10 @@ export function Game({ albums, accessToken, onLogout }) {
             {/* Play Again button - desktop only, under progress bar */}
             {isGameOver && (
               <button
-                onClick={startNewGame}
+                onClick={handlePlayAgain}
                 className="hidden md:block w-full py-3.5 bg-gradient-to-r from-[#1DB954] to-[#1ed760] hover:from-[#1ed760] hover:to-[#1DB954] text-white font-bold text-sm rounded-xl transition-all duration-200 shadow-lg shadow-[#1DB954]/20"
               >
-                Play Again
+                {playAgainLabel}
               </button>
             )}
           </div>
@@ -333,7 +382,12 @@ export function Game({ albums, accessToken, onLogout }) {
                 hints={gameState.hintsRevealed}
                 albums={albums}
                 currentAlbum={gameState.currentAlbum}
-                onPlayAgain={startNewGame}
+                streak={gameState.gameStatus === 'won' ? streak : lostStreak}
+                goal={goal}
+                gauntletComplete={gauntletComplete}
+                gauntletFailed={gauntletFailed}
+                playAgainLabel={playAgainLabel}
+                onPlayAgain={handlePlayAgain}
               />
             ) : (
               <>
@@ -410,21 +464,63 @@ export function Game({ albums, accessToken, onLogout }) {
                   />
                 </div>
 
-                {/* Skip - order-4, centered */}
-                <div className="order-4 flex justify-center">
-                  <button
-                    onClick={handleSkip}
-                    className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-400 border border-white/[0.08] hover:border-white/[0.14] rounded-lg transition-all"
-                  >
-                    Skip this album →
-                  </button>
-                </div>
+                {/* Skip - order-4, centered. Hidden in gauntlet mode (skipping would end the run). */}
+                {!gauntletActive && (
+                  <div className="order-4 flex justify-center">
+                    <button
+                      onClick={requestSkip}
+                      className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-400 border border-white/[0.08] hover:border-white/[0.14] rounded-lg transition-all"
+                    >
+                      Skip this album →
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
 
         </div>
       </main>
+
+      {/* Skip confirmation modal - only shown when skipping would break a streak */}
+      {showSkipConfirm && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          onClick={() => setShowSkipConfirm(false)}
+        >
+          <div
+            className="bg-[#0f0f0f] border border-white/[0.1] rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-orange-500/15 border border-orange-500/40 flex items-center justify-center text-orange-400">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2c.5 3-1.5 4.5-2.8 6C7.7 9.8 7 11.4 7 13a5 5 0 0 0 10 .3c.1-2.2-1-4.2-2.3-5.6.3 1.4-.2 2.4-1 2.9.3-2.6-.9-5.3-1.7-8.6z" />
+                </svg>
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Skip this album?</h2>
+            <p className="text-sm text-gray-400 mb-6">
+              You're on a streak of <span className="font-bold text-orange-400">{streak}</span>. Skipping will end your
+              streak and reset it to 0.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSkipConfirm(false)}
+                className="flex-1 px-4 py-2.5 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.1] text-white font-semibold text-sm rounded-lg transition-all"
+              >
+                Keep playing
+              </button>
+              <button
+                onClick={confirmSkip}
+                className="flex-1 px-4 py-2.5 bg-red-500/90 hover:bg-red-500 text-white font-semibold text-sm rounded-lg transition-all"
+              >
+                Skip anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Help Modal */}
       {showHelpModal && (

@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Login } from './components/Login';
+import { Home } from './components/Home';
 import { Game } from './components/Game';
 import { useSpotifyAuth } from './hooks/useSpotifyAuth';
 import { useSpotifyAPI } from './hooks/useSpotifyAPI';
@@ -6,6 +8,10 @@ import { useSpotifyAPI } from './hooks/useSpotifyAPI';
 function App() {
   const { accessToken, isAuthenticated, isLoading: authLoading, error: authError, login, logout } = useSpotifyAuth();
   const { albums, isLoading: albumsLoading, error: albumsError } = useSpotifyAPI(accessToken);
+
+  // null = on the home screen; { mode, goal } = in a game
+  // mode is the reveal style ('blur' | 'tile'); goal is the gauntlet target streak (null = endless)
+  const [session, setSession] = useState(null);
 
   // Show loading state during authentication
   if (authLoading) {
@@ -62,9 +68,20 @@ function App() {
     );
   }
 
-  // Show game
+  // Show home / game
   if (albums.length > 0) {
-    return <Game albums={albums} accessToken={accessToken} onLogout={logout} />;
+    if (session === null) {
+      return <Home onStart={(mode, goal) => setSession({ mode, goal })} onLogout={logout} />;
+    }
+    return (
+      <Game
+        albums={albums}
+        accessToken={accessToken}
+        mode={session.mode}
+        goal={session.goal}
+        onHome={() => setSession(null)}
+      />
+    );
   }
 
   // Fallback - no albums
