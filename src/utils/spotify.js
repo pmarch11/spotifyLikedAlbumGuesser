@@ -87,14 +87,22 @@ export async function fetchLikedSongs(
   if (!response.ok) {
     if (response.status === 401) throw new Error('Token expired');
     if (response.status === 429) {
-      const retryAfter = parseInt(response.headers.get('Retry-After') ?? '60', 10);
-      if (retryAfter > 10) {
-        throw new Error(`Rate limited by Spotify. Please wait ${Math.ceil(retryAfter / 60)} minute(s) before trying again.`);
-      }
-      if (retries > 0) {
+      // Spotify sends Retry-After but doesn't expose it via CORS, so from the
+      // browser it's almost always null and the real wait time is unknown.
+      const header = response.headers.get('Retry-After');
+      const retryAfter = header !== null ? parseInt(header, 10) : null;
+      if (retryAfter !== null && retryAfter <= 10 && retries > 0) {
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
         return fetchLikedSongs(accessToken, limit, offset, retries - 1);
       }
+      const err = new Error(
+        retryAfter !== null
+          ? `Rate limited by Spotify. Please wait ${Math.ceil(retryAfter / 60)} minute(s) before trying again.`
+          : 'Rate limited by Spotify. This usually clears within a few minutes — waiting longer before retrying helps.'
+      );
+      err.isRateLimit = true;
+      err.retryAfterSeconds = retryAfter;
+      throw err;
     }
     throw new Error('Failed to fetch liked songs');
   }

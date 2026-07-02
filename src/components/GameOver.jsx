@@ -20,7 +20,6 @@ export function GameOver({
   gauntletFailed,
   playAgainLabel,
   onPlayAgain,
-  onHome,
 }) {
   const gauntletActive = goal != null;
 
@@ -123,12 +122,6 @@ export function GameOver({
           className="w-full py-4 bg-accent hover:bg-accent-deep text-cream font-bold text-lg rounded-full transition-all transform hover:scale-[1.01] active:scale-[0.98] shadow-[0_14px_30px_rgba(207,91,39,0.35)]"
         >
           {playAgainLabel}
-        </button>
-        <button
-          onClick={onHome}
-          className="w-full py-1.5 text-sm font-semibold text-ink-soft hover:text-ink transition-colors"
-        >
-          End the run
         </button>
         <p className="eyebrow text-ink/35 text-center mt-1">Cover art &amp; metadata provided by Spotify</p>
       </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { BlurredImage } from './BlurredImage';
+import { TiltedCover } from './TiltedCover';
 import { GuessInput } from './GuessInput';
 import { HintDisplay } from './HintDisplay';
 import { GameOver } from './GameOver';
@@ -227,25 +228,30 @@ export function Game({ albums, mode, goal, ultraHard, onHome }) {
           )}
         </header>
 
-        {/* Album art */}
-        <div className="relative mb-3">
-          <BlurredImage
-            imageUrl={gameState.currentAlbum.imageUrl}
-            blurLevel={gameState.blurLevel}
-            altText="Album cover"
-            mode={mode}
-            tileOrder={gameState.tileOrder}
-            revealedTileCount={isGameOver ? 6 : gameState.guesses.length + 1}
-          />
+        {/* Album art — on desktop, cap the square against viewport height so the
+            whole screen (header, results, actions) fits without scrolling.
+            Game over needs more room below the art than guessing does. */}
+        <div
+          className={`relative mb-3 mx-auto w-full transition-[max-width] duration-500 ease-out ${
+            isGameOver
+              ? 'sm:max-w-[max(14rem,min(100%,calc(100dvh-31rem)))]'
+              : 'sm:max-w-[max(14rem,min(100%,calc(100dvh-28rem)))]'
+          }`}
+        >
+          <TiltedCover enabled={isGameOver}>
+            <BlurredImage
+              imageUrl={gameState.currentAlbum.imageUrl}
+              blurLevel={gameState.blurLevel}
+              altText="Album cover"
+              mode={mode}
+              tileOrder={gameState.tileOrder}
+              revealedTileCount={isGameOver ? 6 : gameState.guesses.length + 1}
+            />
+          </TiltedCover>
           {!isGameOver && (
-            <>
-              <div className="absolute top-3 right-3 px-3 py-1 bg-ink/85 rounded-full eyebrow text-cream">
-                Guess {gameState.guesses.length + 1} / {gameState.maxGuesses}
-              </div>
-              <div className="absolute bottom-3 left-3 eyebrow text-cream/80 [text-shadow:0_1px_4px_rgba(0,0,0,0.5)]">
-                {mode === 'tile' ? 'One panel flips per guess' : 'Cover sharpens each guess'}
-              </div>
-            </>
+            <div className="absolute top-3 right-3 px-3 py-1 bg-ink/85 rounded-full eyebrow text-cream">
+              Guess {gameState.guesses.length + 1} / {gameState.maxGuesses}
+            </div>
           )}
         </div>
 
@@ -288,7 +294,6 @@ export function Game({ albums, mode, goal, ultraHard, onHome }) {
             gauntletFailed={gauntletFailed}
             playAgainLabel={playAgainLabel}
             onPlayAgain={handlePlayAgain}
-            onHome={onHome}
           />
         ) : (
           <>

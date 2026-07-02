@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { getRandomCachedAlbumArtUrl } from '../hooks/useSpotifyAPI';
 
 const VERT = `#version 300 es
 void main() {
@@ -15,8 +16,10 @@ const FRAG = `#version 300 es
 precision highp float;
 
 uniform vec3 iResolution;
-uniform float iTime;
+uniform float uSpin; // accumulated rotation angle, driven from JS
 uniform vec4 iMouse;
+uniform sampler2D uArt;
+uniform float uHasArt;
 
 out vec4 outColor;
 
@@ -74,7 +77,7 @@ vec2 surfaceMin(vec2 a, vec2 b)
 vec2 getDist(vec3 p) {
 
     vec3 diskPos = vec3(0,0,3);
-    mat3 rot = iMouse.z < 1.0 ? rotateY(iTime*0.5) : rotateX(iMouse.y*6.28/iResolution.y) * rotateY(-(iMouse.x*6.28)/iResolution.x);
+    mat3 rot = iMouse.z < 1.0 ? rotateY(uSpin) : rotateX(iMouse.y*6.28/iResolution.y) * rotateY(-(iMouse.x*6.28)/iResolution.x);
     vec3 diskPosRot = (p-diskPos)*rot+diskPos; // position with Y rotation
 
     float outerDisk = sdCylinder(
@@ -290,7 +293,7 @@ void getMat(in vec3 p, in float id, inout vec3 col, inout float sp, inout float 
             refr = 0.0;
 
             vec3 diskPos = vec3(0,0,3);
-            mat3 rot = iMouse.z < 1.0 ? rotateY(iTime*0.5) : rotateX(iMouse.y*6.28/iResolution.y) * rotateY(-(iMouse.x*6.28)/iResolution.x);
+            mat3 rot = iMouse.z < 1.0 ? rotateY(uSpin) : rotateX(iMouse.y*6.28/iResolution.y) * rotateY(-(iMouse.x*6.28)/iResolution.x);
             vec3 diskPosRot = (p-diskPos)*rot+diskPos; // position with Y rotation
 
             // Values for diffraction
@@ -321,8 +324,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 
     //ray origin
     vec3 ro = vec3(0.0);
-    //ray direction
-    vec3 rd = normalize(vec3(uv.x,uv.y,1.0));
+    //ray direction (z tuned so the disc nearly fills the canvas)
+    vec3 rd = normalize(vec3(uv.x,uv.y,1.3));
 
     // Raymarch and get values
     vec2 rs = rayMarch(ro, rd);
@@ -340,6 +343,21 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     float refr = 0.0;
     vec3 difr = vec3(0);
     getMat(p, rs.y, col, sp, refl, refr, difr);
+
+    // Album-art label printed on one face of the disc (materials 1 and 2)
+    if (uHasArt > 0.5 && rs.y > 0.5 && rs.y < 2.5) {
+        vec3 diskPos = vec3(0,0,3);
+        mat3 rot = iMouse.z < 1.0 ? rotateY(uSpin) : rotateX(iMouse.y*6.28/iResolution.y) * rotateY(-(iMouse.x*6.28)/iResolution.x);
+        vec3 lpos = (p - diskPos) * rot; // hit point in the disc's local frame
+        vec3 ln = n * rot;               // normal in the disc's local frame
+        if (ln.z < -0.5) {               // label face only; data face keeps diffraction
+            vec2 auv = lpos.xy * 0.5 + 0.5;
+            vec3 art = pow(textureLod(uArt, auv, 0.0).rgb, vec3(2.2));
+            col = art * 2.5; // compensate for the 0.33 lighting floor in the combine
+            difr = vec3(0);  // no diffraction under the print
+            refl = 0.15;     // matte label with a slight gloss
+        }
+    }
 
     // Diffuse lighting
     vec3 diff = clamp(getLight(p, n, vec3(1), lp), 0.0, 1.0);
@@ -429,6 +447,9 @@ function DiscFallback({ className }) {
 export function Disc({ className }) {
   const canvasRef = useRef(null);
   const [failed, setFailed] = useState(false);
+  // Random cover from the cached library, printed on the disc's label side.
+  // Null (plain disc) when nothing is cached yet, e.g. before first login.
+  const [artUrl] = useState(() => getRandomCachedAlbumArtUrl());
 
   useEffect(() => {
     if (failed) return;
@@ -473,8 +494,34 @@ export function Disc({ className }) {
     gl.useProgram(prog);
 
     const uRes = gl.getUniformLocation(prog, 'iResolution');
-    const uTime = gl.getUniformLocation(prog, 'iTime');
+    const uSpin = gl.getUniformLocation(prog, 'uSpin');
     const uMouse = gl.getUniformLocation(prog, 'iMouse');
+    const uArt = gl.getUniformLocation(prog, 'uArt');
+    const uHasArt = gl.getUniformLocation(prog, 'uHasArt');
+
+    // Album-art texture: 1x1 placeholder until the image loads (if ever)
+    const tex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 128, 255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.uniform1i(uArt, 0);
+    let hasArt = false;
+    let img;
+    if (artUrl) {
+      img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        hasArt = true;
+      };
+      img.src = artUrl;
+    }
 
     // The shader already supersamples (AA 2), so cap the backing resolution
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -490,23 +537,61 @@ export function Disc({ className }) {
     observer.observe(canvas);
     resize();
 
-    // Shadertoy-style iMouse: xy = drag position (y up), z > 0 while pressed
+    // Rotation: auto-spins at BASE_SPIN; a tap adds a decaying flick impulse,
+    // while holding (HOLD_MS) or dragging past TAP_SLOP_PX hands over manual
+    // control (Shadertoy-style iMouse: xy = drag position, y up, z > 0 while
+    // manual mode is engaged).
+    const BASE_SPIN = 0.5; // rad/s
+    const TAP_BOOST = 12; // rad/s added per tap
+    const BOOST_DECAY = 1.6; // exponential decay rate of the flick, per second
+    const HOLD_MS = 250;
+    const TAP_SLOP_PX = 8;
+    let spinAngle = 0;
+    let boost = 0;
     const mouse = { x: 0, y: 0, down: false };
+    let pressed = false;
+    let holdTimer = null;
+    let downX = 0;
+    let downY = 0;
     const setPos = (e) => {
       const rect = canvas.getBoundingClientRect();
       mouse.x = (e.clientX - rect.left) * dpr;
       mouse.y = (rect.height - (e.clientY - rect.top)) * dpr;
     };
     const onPointerDown = (e) => {
-      mouse.down = true;
+      pressed = true;
+      downX = e.clientX;
+      downY = e.clientY;
       setPos(e);
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => {
+        mouse.down = true;
+      }, HOLD_MS);
       canvas.setPointerCapture(e.pointerId);
     };
     const onPointerMove = (e) => {
-      if (mouse.down) setPos(e);
+      if (!pressed) return;
+      if (mouse.down) {
+        setPos(e);
+      } else if (Math.hypot(e.clientX - downX, e.clientY - downY) > TAP_SLOP_PX) {
+        // Dragged before the hold elapsed: that's rotate intent, not a tap
+        clearTimeout(holdTimer);
+        mouse.down = true;
+        setPos(e);
+      }
     };
     const onPointerUp = () => {
-      mouse.down = false;
+      if (!pressed) return;
+      pressed = false;
+      clearTimeout(holdTimer);
+      if (mouse.down) {
+        mouse.down = false;
+        // Resume the auto-spin from the dragged Y angle instead of snapping
+        spinAngle = -(mouse.x * 6.28) / canvas.width;
+      } else {
+        // Quick tap: flick the disc (stacks up to a cap on repeated taps)
+        boost = Math.min(boost + TAP_BOOST, 3 * TAP_BOOST);
+      }
     };
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
@@ -514,12 +599,17 @@ export function Disc({ className }) {
     canvas.addEventListener('pointercancel', onPointerUp);
 
     let raf;
-    const start = performance.now();
+    let lastT = performance.now();
     const frame = (now) => {
+      const dt = Math.min((now - lastT) / 1000, 0.1); // clamp tab-switch gaps
+      lastT = now;
+      spinAngle += dt * (BASE_SPIN + boost);
+      boost *= Math.exp(-BOOST_DECAY * dt);
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform3f(uRes, canvas.width, canvas.height, 1);
-      gl.uniform1f(uTime, (now - start) / 1000);
+      gl.uniform1f(uSpin, spinAngle);
       gl.uniform4f(uMouse, mouse.x, mouse.y, mouse.down ? 1 : 0, 0);
+      gl.uniform1f(uHasArt, hasArt ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       raf = requestAnimationFrame(frame);
     };
@@ -533,6 +623,7 @@ export function Disc({ className }) {
 
     return () => {
       cancelAnimationFrame(raf);
+      clearTimeout(holdTimer);
       observer.disconnect();
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);
@@ -541,11 +632,13 @@ export function Disc({ className }) {
       canvas.removeEventListener('webglcontextlost', onContextLost);
       // Don't lose the context here: StrictMode re-runs this effect on the
       // same canvas, and a lost context can't compile shaders again.
+      if (img) img.onload = null;
+      gl.deleteTexture(tex);
       gl.deleteProgram(prog);
       gl.deleteShader(vs);
       gl.deleteShader(fs);
     };
-  }, [failed]);
+  }, [failed, artUrl]);
 
   if (failed) return <DiscFallback className={className} />;
   return (
