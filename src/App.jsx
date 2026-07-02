@@ -3,7 +3,7 @@ import { Login } from './components/Login';
 import { Home } from './components/Home';
 import { Game } from './components/Game';
 import { useSpotifyAuth } from './hooks/useSpotifyAuth';
-import { useSpotifyAPI } from './hooks/useSpotifyAPI';
+import { useSpotifyAPI, clearAlbumCache } from './hooks/useSpotifyAPI';
 
 function App() {
   const { accessToken, isAuthenticated, isLoading: authLoading, error: authError, login, logout } = useSpotifyAuth();
@@ -13,6 +13,12 @@ function App() {
   // mode is the reveal style ('blur' | 'tile'); goal is the gauntlet target streak (null = endless);
   // ultraHard hides artist names from the guess autocomplete
   const [session, setSession] = useState(null);
+
+  const handleLogout = () => {
+    clearAlbumCache();
+    setSession(null);
+    logout();
+  };
 
   // Show loading state during authentication
   if (authLoading) {
@@ -30,19 +36,7 @@ function App() {
     return <Login onLogin={login} error={authError} />;
   }
 
-  // Show loading state while fetching albums
-  if (albumsLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
-        <div className="text-center">
-          <p className="text-xl text-gray-300 mb-2">Loading your albums...</p>
-          <p className="text-sm text-gray-500">This may take a moment</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state
+  // Show error state (only set when there's no cached library to fall back on)
   if (albumsError) {
     console.error('Album fetch error:', albumsError);
     return (
@@ -58,7 +52,7 @@ function App() {
               Try Again
             </button>
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="px-6 py-3 bg-white/[0.08] hover:bg-white/[0.12] text-white rounded-lg transition-colors"
             >
               Log Out
@@ -69,30 +63,43 @@ function App() {
     );
   }
 
-  // Show home / game
-  if (albums.length > 0) {
-    if (session === null) {
-      return <Home onStart={(mode, goal, ultraHard) => setSession({ mode, goal, ultraHard })} onLogout={logout} />;
+  // Home screen renders immediately — the library loads in the background
+  if (session === null) {
+    return <Home onStart={(mode, goal, ultraHard) => setSession({ mode, goal, ultraHard })} onLogout={handleLogout} />;
+  }
+
+  // Game started before the library finished loading — wait for it here
+  if (albums.length === 0) {
+    if (albumsLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
+          <div className="text-center">
+            <p className="text-xl text-gray-300 mb-2">Loading your albums...</p>
+            <p className="text-sm text-gray-500">This may take a moment</p>
+          </div>
+        </div>
+      );
     }
+
+    // Fallback - no albums and not loading
     return (
-      <Game
-        albums={albums}
-        accessToken={accessToken}
-        mode={session.mode}
-        goal={session.goal}
-        ultraHard={session.ultraHard}
-        onHome={() => setSession(null)}
-      />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
+        <div className="text-center">
+          <p className="text-xl text-gray-300">No albums found</p>
+        </div>
+      </div>
     );
   }
 
-  // Fallback - no albums
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
-      <div className="text-center">
-        <p className="text-xl text-gray-300">No albums found</p>
-      </div>
-    </div>
+    <Game
+      albums={albums}
+      accessToken={accessToken}
+      mode={session.mode}
+      goal={session.goal}
+      ultraHard={session.ultraHard}
+      onHome={() => setSession(null)}
+    />
   );
 }
 

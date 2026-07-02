@@ -1,33 +1,39 @@
 # Spotify Album Guesser
 
-A fun React-based game where you guess album names from your Spotify liked songs. The album cover starts heavily blurred, and with each wrong guess, hints are revealed and the image becomes clearer.
+A fun React-based game where you guess album names from your Spotify liked songs. The album cover starts hidden, and with each wrong guess, hints are revealed and more of the cover is shown.
 
 ## Features
 
 - **Spotify OAuth Integration**: Secure authentication using PKCE flow
+- **Two Reveal Modes**: Blur (cover sharpens with each guess) or Tile (cover revealed one tile at a time)
+- **Endless & Gauntlet Modes**: Play casually or chase a streak of 3, 5, or 10 in a row
+- **Ultra Hard Mode**: Autocomplete hides artist names — album titles only
 - **Progressive Hints System**: Get hints after each wrong guess
-- **Dynamic Blur Effect**: Album cover becomes clearer as you guess
 - **Responsive Design**: Works on desktop and mobile devices
 - **Dark Theme**: Spotify-inspired aesthetic
 
 ## How to Play
 
 1. Log in with your Spotify account
-2. An album from your liked songs will appear (heavily blurred)
-3. Try to guess the album name
-4. After each wrong guess, you'll receive hints:
-   - **After 1st guess**: Release year
-   - **After 2nd guess**: Featured artists/collaborators + reduced blur
-   - **After 3rd guess**: First letter of album name + more reduced blur
-   - **After 4th guess**: Number of tracks + minimal blur
-   - **After 5th guess**: Game over (win or lose)
-5. Click "Play Again" to try a new album!
+2. Choose a reveal mode (Blur or Tile) and a game mode (Endless or Gauntlet)
+3. An album from your liked songs will appear (hidden)
+4. Try to guess the album name — you get 5 guesses
+5. After each wrong guess, more of the cover is revealed and you get a hint:
+   - **After 1st guess**: Release year and track count
+   - **After 2nd guess**: Featured artists/collaborators
+   - **After 3rd guess**: First letter, word count, and letter count of the album name
+   - **After 4th guess**: Up to 3 of your liked songs from the album
+6. You can also skip straight to the next hint (costs a guess) or skip the album entirely
+
+### Game Modes
+
+- **Endless**: Keep playing album after album, building a streak as you go
+- **Gauntlet**: Pick a target — Beginner (3), Intermediate (5), or Expert (10) — and try to guess that many in a row. One loss resets the run.
 
 ## Tech Stack
 
 - **Vite** - Build tool
 - **React 19** - UI framework
-- **TypeScript** - Type safety
 - **Tailwind CSS 4** - Styling
 - **Spotify Web API** - Music data
 
@@ -43,7 +49,7 @@ A fun React-based game where you guess album names from your Spotify liked songs
 
 ```bash
 git clone <repository-url>
-cd spotify-album-guesser
+cd spotifyAlbumGuesser
 ```
 
 ### 2. Install Dependencies
@@ -67,16 +73,12 @@ npm install
 
 ### 4. Configure Environment Variables
 
-1. Copy the example environment file:
-   ```bash
-   cp .env.example .env
-   ```
+Create a `.env` file in the project root with your Spotify Client ID:
 
-2. Edit `.env` and add your Spotify Client ID:
-   ```
-   VITE_SPOTIFY_CLIENT_ID=your_client_id_here
-   VITE_REDIRECT_URI=http://localhost:8080/callback
-   ```
+```
+VITE_SPOTIFY_CLIENT_ID=your_client_id_here
+VITE_REDIRECT_URI=http://localhost:8080/callback
+```
 
 ### 5. Run the Development Server
 
@@ -91,42 +93,29 @@ The app will open at `http://localhost:8080`
 ```
 src/
 ├── components/
-│   ├── Login.tsx          # Spotify login button
-│   ├── Game.tsx            # Main game component
-│   ├── BlurredImage.tsx    # Album cover with blur effect
-│   ├── GuessInput.tsx      # Input field for guesses
-│   ├── HintDisplay.tsx     # Shows hints after each guess
-│   └── GameOver.tsx        # End game screen
+│   ├── Login.jsx           # Spotify login button
+│   ├── Home.jsx            # Mode selection screen
+│   ├── Game.jsx            # Main game component
+│   ├── BlurredImage.jsx    # Album cover with blur/tile reveal
+│   ├── GuessInput.jsx      # Input field with autocomplete
+│   ├── HintDisplay.jsx     # Shows hints after each guess
+│   └── GameOver.jsx        # End game screen
 ├── hooks/
-│   ├── useSpotifyAuth.ts   # Handle OAuth flow
-│   └── useSpotifyAPI.ts    # Fetch liked songs/albums
+│   ├── useSpotifyAuth.js   # Handle OAuth flow
+│   └── useSpotifyAPI.js    # Fetch liked songs/albums
 ├── utils/
-│   ├── spotify.ts          # Spotify API helper functions
-│   └── gameLogic.ts        # Game state and hint logic
-├── types/
-│   └── spotify.ts          # TypeScript interfaces
-├── App.tsx                 # Main app component
-└── main.tsx               # Entry point
+│   ├── spotify.js          # Spotify API helper functions
+│   └── gameLogic.js        # Game state and hint logic
+├── App.jsx                 # Main app component
+└── main.jsx                # Entry point
 ```
 
 ## Game Logic
 
-### Blur Levels
+### Cover Reveal
 
-- **Initial**: 40px blur
-- **After 2nd guess**: 25px blur
-- **After 3rd guess**: 15px blur
-- **After 4th guess**: 5px blur
-- **After 5th guess or correct**: 0px blur (fully clear)
-
-### Hint System
-
-Hints are revealed progressively to help you guess:
-
-1. **Release Year**: The year the album was released
-2. **Featured Artists**: Artists who appear on the album but aren't the main artist
-3. **First Letter**: The first letter of the album name
-4. **Track Count**: The total number of tracks on the album
+- **Blur mode**: Starts at 40px blur, reducing to 30 → 20 → 12 → 5px with each guess, fully clear when the round ends
+- **Tile mode**: The cover is split into 6 tiles; one tile is revealed with each guess
 
 ### Album Matching
 
@@ -134,8 +123,10 @@ The game normalizes your guess and the album name for comparison:
 - Case-insensitive
 - Removes punctuation
 - Trims whitespace
+- Strips edition info ("Deluxe", "Expanded", "Remastered", etc.) so "Abbey Road (Remastered)" matches "Abbey Road"
+- Accepts "Artist - Album" format (only the album part is checked)
 
-This means "Abbey Road" will match "abbey road", "Abbey Rd", etc.
+Duplicate editions of the same album in your library are deduplicated.
 
 ## Building for Production
 
@@ -143,7 +134,7 @@ This means "Abbey Road" will match "abbey road", "Abbey Rd", etc.
 npm run build
 ```
 
-The built files will be in the `dist/` directory.
+The built files will be in the `dist/` directory. A `vercel.json` is included for SPA routing on Vercel.
 
 ## Troubleshooting
 
@@ -167,4 +158,4 @@ MIT
 
 ## Credits
 
-Built with React, TypeScript, and the Spotify Web API.
+Built with React and the Spotify Web API.
