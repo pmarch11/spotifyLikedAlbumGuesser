@@ -39,7 +39,7 @@ const RUN_LENGTHS = [
   { id: '10', label: '10', goal: 10 },
 ];
 
-export function Home({ onStart, onLogout }) {
+export function Home({ onStart, onLogout, logoutLabel = 'Log out' }) {
   const [mode, setMode] = useState(() => localStorage.getItem('gameMode') ?? 'blur');
   const [ultraHard, setUltraHard] = useState(() => localStorage.getItem('ultraHard') === 'true');
   const [runLength, setRunLength] = useState(() => {
@@ -75,7 +75,7 @@ export function Home({ onStart, onLogout }) {
               onClick={onLogout}
               className="text-sm text-ink-soft hover:text-ink transition-colors"
             >
-              Log out
+              {logoutLabel}
             </button>
           </div>
         </header>

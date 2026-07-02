@@ -1,12 +1,14 @@
-// Teaser labels for hints that haven't unlocked yet, in unlock order
+// Teaser labels for hints that haven't unlocked yet, in unlock order.
+// Guest decks have no liked-track data, so their final hint reveals the artist.
 const HINT_TEASERS = [
   'Year & track count',
   'Featured artists',
   'First letter & word count',
   'Liked song titles',
 ];
+const GUEST_FINAL_TEASER = 'Artist name';
 
-export function HintDisplay({ hints, maxGuesses }) {
+export function HintDisplay({ hints, maxGuesses, guestMode = false }) {
   const totalHints = maxGuesses - 1; // one hint unlocks per miss, last miss ends the round
 
   return (
@@ -30,7 +32,9 @@ export function HintDisplay({ hints, maxGuesses }) {
                 {revealed ? (
                   <span className="text-sm font-semibold text-ink leading-snug">{hints[i].label}</span>
                 ) : (
-                  <span className="text-sm text-ink/40 leading-snug">{HINT_TEASERS[i]}</span>
+                  <span className="text-sm text-ink/40 leading-snug">
+                    {guestMode && i === HINT_TEASERS.length - 1 ? GUEST_FINAL_TEASER : HINT_TEASERS[i]}
+                  </span>
                 )}
               </div>
             </div>

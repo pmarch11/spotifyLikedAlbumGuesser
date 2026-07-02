@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getRandomCachedAlbumArtUrl } from '../hooks/useSpotifyAPI';
+import { fetchRandomAlbumArtUrl } from '../utils/itunes';
 
 const VERT = `#version 300 es
 void main() {
@@ -351,8 +352,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
         mat3 rot = iMouse.z < 1.0 ? rotateX(uTilt) * rotateY(uSpin) : rotateX(iMouse.y*6.28/iResolution.y) * rotateY(-(iMouse.x*6.28)/iResolution.x);
         vec3 lpos = (p - diskPos) * rot; // hit point in the disc's local frame
         vec3 ln = n * rot;               // normal in the disc's local frame
-        if (ln.z < -0.5) {               // label face only; data face keeps diffraction
-            vec2 auv = lpos.xy * 0.5 + 0.5;
+        if (ln.z > 0.5) {                // label face only; data face keeps diffraction
+            // u mirrored: this face points at the camera after a 180° Y turn
+            vec2 auv = vec2(0.5 - lpos.x * 0.5, lpos.y * 0.5 + 0.5);
             vec3 art = pow(textureLod(uArt, auv, 0.0).rgb, vec3(2.2));
             col = art * 2.5; // compensate for the 0.33 lighting floor in the combine
             difr = vec3(0);  // no diffraction under the print
@@ -448,9 +450,6 @@ function DiscFallback({ className }) {
 export function Disc({ className }) {
   const canvasRef = useRef(null);
   const [failed, setFailed] = useState(false);
-  // Random cover from the cached library, printed on the disc's label side.
-  // Null (plain disc) when nothing is cached yet, e.g. before first login.
-  const [artUrl] = useState(() => getRandomCachedAlbumArtUrl());
 
   useEffect(() => {
     if (failed) return;
@@ -513,7 +512,9 @@ export function Disc({ className }) {
     gl.uniform1i(uArt, 0);
     let hasArt = false;
     let img;
-    if (artUrl) {
+    let disposed = false;
+    const loadArt = (url) => {
+      if (!url || disposed) return;
       img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
@@ -522,7 +523,18 @@ export function Disc({ className }) {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
         hasArt = true;
       };
-      img.src = artUrl;
+      img.src = url;
+    };
+    // Label art: a cover from the cached library when one exists (instant,
+    // personal), otherwise a random cover fetched from the iTunes catalog so
+    // first-time visitors still see a printed disc
+    const cachedArtUrl = getRandomCachedAlbumArtUrl();
+    if (cachedArtUrl) {
+      loadArt(cachedArtUrl);
+    } else {
+      fetchRandomAlbumArtUrl()
+        .then(loadArt)
+        .catch(() => {}); // plain disc is a fine fallback
     }
 
     // The shader already supersamples (AA 2), so cap the backing resolution
@@ -643,13 +655,14 @@ export function Disc({ className }) {
       canvas.removeEventListener('webglcontextlost', onContextLost);
       // Don't lose the context here: StrictMode re-runs this effect on the
       // same canvas, and a lost context can't compile shaders again.
+      disposed = true;
       if (img) img.onload = null;
       gl.deleteTexture(tex);
       gl.deleteProgram(prog);
       gl.deleteShader(vs);
       gl.deleteShader(fs);
     };
-  }, [failed, artUrl]);
+  }, [failed]);
 
   if (failed) return <DiscFallback className={className} />;
   return (

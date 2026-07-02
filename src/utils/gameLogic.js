@@ -143,9 +143,10 @@ export function extractAlbumsFromSaved(savedAlbums) {
 }
 
 // Select random album, weighted by number of saved tracks
+// (guest-mode albums have no track data — they all weigh 1, i.e. uniform)
 export function selectRandomAlbum(albums) {
   if (albums.length === 0) return null;
-  const weights = albums.map(album => album.trackTitles.length);
+  const weights = albums.map(album => album.trackTitles.length || 1);
   const totalWeight = weights.reduce((sum, w) => sum + w, 0);
   let random = Math.random() * totalWeight;
   for (let i = 0; i < albums.length; i++) {
@@ -157,12 +158,17 @@ export function selectRandomAlbum(albums) {
 
 // Strip edition information from album name
 export function stripEditionInfo(albumName) {
-  const editionKeywords = 'Deluxe|Expanded|Remastered?|Re-?Mastered?|Reissue|Live|Anniversary|Special|Bonus Track|Explicit|Clean|Radio Edit|Single Version|Album Version|Extended|Collector\'s|Edition|Version';
+  const editionKeywords = 'Deluxe|Expanded|Re-?Master(?:ed)?|Reissue|Live|Anniversary|Special|Bonus Track|Explicit|Clean|Radio Edit|Single Version|Album Version|Extended|Collector\'s|Edition|Version';
 
   return albumName
     // Remove anything in parentheses or brackets containing edition keywords
     // This handles: (Deluxe), [Remastered], (Expanded & Remastered), (Reissue - Deluxe Edition), etc.
     .replace(new RegExp(`\\s*[\\(\\[][^()\\[\\]]*?(${editionKeywords})[^()\\[\\]]*?[\\)\\]]\\s*`, 'gi'), '')
+    // Remove un-bracketed trailing segments after a colon containing edition keywords
+    // This handles: "Odyssey Number Five: 20th Anniversary Edition" (common iTunes style)
+    .replace(new RegExp(`\\s*:\\s[^:]*\\b(${editionKeywords})\\b[^:]*$`, 'i'), '')
+    // Remove bare trailing anniversary suffixes: "Frogstomp 20th Anniversary"
+    .replace(/\s+\d+(?:st|nd|rd|th) Anniversary(?: (?:Edition|Deluxe|Remaster(?:ed)?))?$/i, '')
     // Clean up any resulting double spaces
     .replace(/\s+/g, ' ')
     .trim();
@@ -261,14 +267,24 @@ export function generateHints(album, guessNumber) {
     });
   }
 
-  // Hint 4: Up to 3 liked track titles from this album
+  // Hint 4: Up to 3 liked track titles from this album; guest-mode albums have
+  // no track data, so reveal the artist instead as the last-resort hint
   if (guessNumber >= 4) {
-    const titles = album.trackTitles.slice(0, 3);
-    hints.push({
-      type: 'trackCount',
-      value: titles.join(', '),
-      label: `Songs: ${titles.join(', ')}`,
-    });
+    if (album.trackTitles.length > 0) {
+      const titles = album.trackTitles.slice(0, 3);
+      hints.push({
+        type: 'trackCount',
+        value: titles.join(', '),
+        label: `Songs: ${titles.join(', ')}`,
+      });
+    } else {
+      const artists = album.mainArtists.join(', ');
+      hints.push({
+        type: 'artist',
+        value: artists,
+        label: `Artist: ${artists}`,
+      });
+    }
   }
 
   return hints;

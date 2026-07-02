@@ -5,6 +5,7 @@ import { Home } from './components/Home';
 import { Game } from './components/Game';
 import { useSpotifyAuth } from './hooks/useSpotifyAuth';
 import { useSpotifyAPI, clearAlbumCache } from './hooks/useSpotifyAPI';
+import { useGuestAlbums } from './hooks/useGuestAlbums';
 
 function SpinningDisc({ label, sublabel }) {
   return (
@@ -22,15 +23,30 @@ function SpinningDisc({ label, sublabel }) {
 
 function App() {
   const { accessToken, isAuthenticated, isLoading: authLoading, error: authError, login, logout } = useSpotifyAuth();
-  const { albums, isLoading: albumsLoading, error: albumsError } = useSpotifyAPI(accessToken);
+
+  // Guest mode: play a curated iTunes deck without a Spotify account.
+  // Spotify login always wins if both are somehow present.
+  const [guestPool, setGuestPool] = useState(() => sessionStorage.getItem('guest_pool'));
+  const isGuest = !isAuthenticated && guestPool !== null;
+
+  const spotifyLibrary = useSpotifyAPI(accessToken);
+  const guestDeck = useGuestAlbums(isGuest ? guestPool : null);
+  const { albums, isLoading: albumsLoading, error: albumsError } = isGuest ? guestDeck : spotifyLibrary;
 
   // null = on the home screen; { mode, goal, ultraHard } = in a game
   // mode is the reveal style ('blur' | 'tile'); goal is the gauntlet target streak (null = endless);
   // ultraHard hides artist names from the guess autocomplete
   const [session, setSession] = useState(null);
 
+  const startGuest = (poolId) => {
+    sessionStorage.setItem('guest_pool', poolId);
+    setGuestPool(poolId);
+  };
+
   const handleLogout = () => {
     clearAlbumCache();
+    sessionStorage.removeItem('guest_pool');
+    setGuestPool(null);
     setSession(null);
     logout();
   };
@@ -40,9 +56,9 @@ function App() {
     return <SpinningDisc label="Loading…" />;
   }
 
-  // Show login screen if not authenticated
-  if (!isAuthenticated) {
-    return <Login onLogin={login} error={authError} />;
+  // Show login screen if not authenticated and not playing a guest deck
+  if (!isAuthenticated && !isGuest) {
+    return <Login onLogin={login} onGuestStart={startGuest} error={authError} />;
   }
 
   // Show error state (only set when there's no cached library to fall back on)
@@ -74,17 +90,27 @@ function App() {
 
   // Home screen renders immediately — the library loads in the background
   if (session === null) {
-    return <Home onStart={(mode, goal, ultraHard) => setSession({ mode, goal, ultraHard })} onLogout={handleLogout} />;
+    return (
+      <Home
+        onStart={(mode, goal, ultraHard) => setSession({ mode, goal, ultraHard })}
+        onLogout={handleLogout}
+        logoutLabel={isGuest ? 'Switch deck' : 'Log out'}
+      />
+    );
   }
 
   // Game started before the library finished loading — wait for it here
   if (albums.length === 0) {
     if (albumsLoading) {
-      return <SpinningDisc label="Loading your albums…" sublabel="This may take a moment" />;
+      return isGuest
+        ? <SpinningDisc label="Loading the deck…" sublabel="This may take a moment" />
+        : <SpinningDisc label="Loading your albums…" sublabel="This may take a moment" />;
     }
 
     // Fallback - no albums and not loading
-    return <SpinningDisc label="No albums found" sublabel="Like some songs on Spotify first" />;
+    return isGuest
+      ? <SpinningDisc label="No albums found" sublabel="Try a different deck" />
+      : <SpinningDisc label="No albums found" sublabel="Like some songs on Spotify first" />;
   }
 
   return (

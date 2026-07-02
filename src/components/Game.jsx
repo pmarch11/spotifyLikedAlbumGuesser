@@ -315,6 +315,7 @@ export function Game({ albums, mode, goal, ultraHard, onHome }) {
               hints={gameState.hintsRevealed}
               currentGuess={gameState.guesses.length}
               maxGuesses={gameState.maxGuesses}
+              guestMode={gameState.currentAlbum.source === 'itunes'}
             />
 
             {/* Skip - hidden in gauntlet mode (skipping would end the run) */}

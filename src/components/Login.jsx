@@ -1,4 +1,5 @@
 import { Disc } from './Disc';
+import { GUEST_POOLS } from '../utils/itunes';
 
 function SpotifyLogo({ className }) {
   return (
@@ -8,7 +9,7 @@ function SpotifyLogo({ className }) {
   );
 }
 
-export function Login({ onLogin, error }) {
+export function Login({ onLogin, onGuestStart, error }) {
   return (
     <div className="min-h-screen bg-paper flex flex-col items-center justify-center px-6 py-10">
       <div className="w-full max-w-sm flex-1 flex flex-col items-center justify-center text-center gap-8">
@@ -26,7 +27,7 @@ export function Login({ onLogin, error }) {
             Disc<br />Cover
           </h1>
           <p className="text-ink-soft leading-relaxed max-w-[17rem] mx-auto">
-            Guess album covers from your Spotify liked songs.
+            Guess album covers from a genres, or your Spotify liked songs.
           </p>
         </div>
 
@@ -37,8 +38,29 @@ export function Login({ onLogin, error }) {
           </div>
         )}
 
-        {/* Login button */}
+        {/* Guest decks — playable by anyone, no account needed */}
         <div className="w-full space-y-4">
+          <p className="eyebrow text-ink/40">Pick a deck — no account needed</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {GUEST_POOLS.map((pool) => (
+              <button
+                key={pool.id}
+                onClick={() => onGuestStart(pool.id)}
+                className="px-4 py-2 bg-cream border border-ink/15 hover:border-ink/40 text-ink text-sm font-bold rounded-full transition-all active:scale-[0.97]"
+              >
+                {pool.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Spotify login — secondary since most users can't log in */}
+        <div className="w-full space-y-4">
+          <div className="flex items-center gap-3">
+            <span className="flex-1 h-px bg-ink/10" />
+            <span className="eyebrow text-ink/40">or use your own library</span>
+            <span className="flex-1 h-px bg-ink/10" />
+          </div>
           <button
             onClick={onLogin}
             className="w-full flex items-center justify-center gap-3 py-4 bg-ink hover:bg-ink/90 text-cream font-bold rounded-full transition-all transform hover:scale-[1.01] active:scale-[0.98] shadow-[0_12px_30px_rgba(43,33,26,0.25)]"
@@ -46,9 +68,6 @@ export function Login({ onLogin, error }) {
             <SpotifyLogo className="w-5 h-5 flex-shrink-0" />
             Continue with Spotify
           </button>
-          <p className="text-xs text-ink-soft leading-relaxed max-w-[16rem] mx-auto">
-            We only read your Liked Songs to build the game. Nothing is stored, changed, or posted.
-          </p>
         </div>
       </div>
 

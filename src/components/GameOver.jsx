@@ -66,8 +66,12 @@ export function GameOver({
           onClick={() => window.open(album.uri, '_blank')}
           className="flex-shrink-0 flex items-center gap-2 pl-3.5 pr-4 py-2.5 bg-ink hover:bg-ink/90 text-cream text-sm font-bold rounded-full transition-all"
         >
-          <SpotifyLogo className="w-4 h-4" />
-          Open in Spotify
+          {album.source === 'itunes' ? (
+            <span className="text-base leading-none">♪</span>
+          ) : (
+            <SpotifyLogo className="w-4 h-4" />
+          )}
+          {album.source === 'itunes' ? 'Open in Apple Music' : 'Open in Spotify'}
         </button>
       </div>
 
@@ -123,7 +127,6 @@ export function GameOver({
         >
           {playAgainLabel}
         </button>
-        <p className="eyebrow text-ink/35 text-center mt-1">Cover art &amp; metadata provided by Spotify</p>
       </div>
     </div>
   );
