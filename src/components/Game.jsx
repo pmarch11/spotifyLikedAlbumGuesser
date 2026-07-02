@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { BlurredImage } from './BlurredImage';
 import { GuessInput } from './GuessInput';
 import { HintDisplay } from './HintDisplay';
@@ -14,27 +14,57 @@ function shuffleTiles() {
   return arr;
 }
 
-export function Game({ albums, accessToken, mode, goal, onHome }) {
-  const [showHelpModal, setShowHelpModal] = useState(false);
-  const [showSkipConfirm, setShowSkipConfirm] = useState(false);
-  const [streak, setStreak] = useState(0);
-  // Streak value at the moment it was broken, so the loss screen can show it
-  const [lostStreak, setLostStreak] = useState(0);
-
-  const [gameState, setGameState] = useState({
-    currentAlbum: null,
+function newGame(albums) {
+  return {
+    currentAlbum: selectRandomAlbum(albums) || null,
     guesses: [],
     hintsRevealed: [],
     blurLevel: 40,
     tileOrder: shuffleTiles(),
     gameStatus: 'playing',
     maxGuesses: 5,
-  });
+  };
+}
 
-  // Initialize game with random album
-  useEffect(() => {
-    startNewGame();
+export function Game({ albums, accessToken, mode, goal, ultraHard, onHome }) {
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false);
+  const [streak, setStreak] = useState(0);
+  // Streak value at the moment it was broken, so the loss screen can show it
+  const [lostStreak, setLostStreak] = useState(0);
+
+  // Albums are loaded before Game mounts, so the first round can be created
+  // directly in the initial state
+  const [gameState, setGameState] = useState(() => newGame(albums));
+
+  // Albums already shown this session, so they don't repeat until the
+  // whole library has been played through. Seeded with the first round's album.
+  const playedAlbumIdsRef = useRef(
+    new Set(gameState.currentAlbum ? [gameState.currentAlbum.id] : [])
+  );
+
+  const startNewGame = useCallback(() => {
+    const played = playedAlbumIdsRef.current;
+    let pool = albums.filter((a) => !played.has(a.id));
+    if (pool.length === 0) {
+      played.clear();
+      pool = albums;
+    }
+
+    const next = newGame(pool);
+    if (!next.currentAlbum) return;
+    played.add(next.currentAlbum.id);
+    setGameState(next);
   }, [albums]);
+
+  // Continue / restart after an album ends. In a gauntlet, a finished run
+  // (failed, or goal reached) resets the streak; a mid-run win keeps it going.
+  const handlePlayAgain = useCallback(() => {
+    if (goal != null && (gameState.gameStatus === 'lost' || streak >= goal)) {
+      setStreak(0);
+    }
+    startNewGame();
+  }, [goal, gameState.gameStatus, streak, startNewGame]);
 
   // Listen for Enter key on game over screen
   useEffect(() => {
@@ -50,31 +80,7 @@ export function Game({ albums, accessToken, mode, goal, onHome }) {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameState.gameStatus]);
-
-  const startNewGame = () => {
-    const album = selectRandomAlbum(albums);
-    if (!album) return;
-
-    setGameState({
-      currentAlbum: album,
-      guesses: [],
-      hintsRevealed: [],
-      blurLevel: 40,
-      tileOrder: shuffleTiles(),
-      gameStatus: 'playing',
-      maxGuesses: 5,
-    });
-  };
-
-  // Continue / restart after an album ends. In a gauntlet, a finished run
-  // (failed, or goal reached) resets the streak; a mid-run win keeps it going.
-  const handlePlayAgain = () => {
-    if (goal != null && (gameState.gameStatus === 'lost' || streak >= goal)) {
-      setStreak(0);
-    }
-    startNewGame();
-  };
+  }, [gameState.gameStatus, handlePlayAgain]);
 
   const handleGuess = (guess) => {
     if (!gameState.currentAlbum || gameState.gameStatus !== 'playing') return;
@@ -461,6 +467,7 @@ export function Game({ albums, accessToken, mode, goal, onHome }) {
                     disabled={false}
                     allAlbums={albums}
                     currentAlbumId={gameState.currentAlbum.id}
+                    ultraHard={ultraHard}
                   />
                 </div>
 

@@ -39,14 +39,7 @@ export function extractUniqueAlbums(savedTracks) {
 
       // Check for duplicates by stripped name
       const strippedName = stripEditionInfo(album.name).toLowerCase();
-      if (strippedNameMap.has(strippedName)) {
-        const existingAlbumId = strippedNameMap.get(strippedName);
-        const existingAlbum = albumMap.get(existingAlbumId);
-        // Keep the one with more liked tracks (will be determined at the end)
-        strippedNameMap.set(strippedName, album.id);
-      } else {
-        strippedNameMap.set(strippedName, album.id);
-      }
+      strippedNameMap.set(strippedName, album.id);
     } else {
       // If album already exists, add any new artists and track titles from this track
       const existingAlbum = albumMap.get(album.id);

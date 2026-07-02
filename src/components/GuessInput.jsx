@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { fuzzyMatch } from '../utils/gameLogic';
 
-export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAlbumId: _currentAlbumId }) {
+export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAlbumId: _currentAlbumId, ultraHard }) {
   const [guess, setGuess] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -13,10 +13,11 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
   const suggestions = guess.length >= 2
     ? allAlbums
         .filter(album => {
-          // Check if search matches album name or artist names
-          const albumName = album.name;
-          const artistNames = album.mainArtists.join(' ');
-          return fuzzyMatch(guess, albumName) || fuzzyMatch(guess, artistNames);
+          // Check if search matches album name or artist names.
+          // In ultra hard mode, artists are hidden so only match album names.
+          if (fuzzyMatch(guess, album.name)) return true;
+          if (ultraHard) return false;
+          return fuzzyMatch(guess, album.mainArtists.join(' '));
         })
         .slice(0, 8)
     : [];
@@ -67,7 +68,9 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
 
   const handleSuggestionClick = (album) => {
     justClosedRef.current = true;
-    const formattedGuess = `${album.mainArtists.join(', ')} - ${album.name}`;
+    const formattedGuess = ultraHard
+      ? album.name
+      : `${album.mainArtists.join(', ')} - ${album.name}`;
     setGuess(formattedGuess);
     setShowSuggestions(false);
     inputRef.current?.focus();
@@ -125,9 +128,11 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
                   } ${index !== suggestions.length - 1 ? 'border-b border-white/[0.06]' : ''}`}
                 >
                   <div className="text-sm font-semibold text-white">{album.name}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">
-                    {album.mainArtists.join(', ')}
-                  </div>
+                  {!ultraHard && (
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {album.mainArtists.join(', ')}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>

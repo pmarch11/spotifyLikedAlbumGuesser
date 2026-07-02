@@ -8,12 +8,12 @@ export function useSpotifyAPI(accessToken) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!accessToken) {
-      setAlbums([]);
-      return;
-    }
-
     const fetchAlbums = async () => {
+      if (!accessToken) {
+        setAlbums([]);
+        return;
+      }
+
       try {
         setIsLoading(true);
         setError(null);

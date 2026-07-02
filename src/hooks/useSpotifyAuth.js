@@ -20,29 +20,51 @@ const getRedirectUri = () => {
 
 const REDIRECT_URI = getRedirectUri();
 
-export function useSpotifyAuth() {
-  const [accessToken, setAccessToken] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+// sessionStorage doesn't carry across localhost <-> 127.0.0.1, so the PKCE
+// verifier saved before login is lost if the app is opened on the other host.
+// Normalize loopback hosts to match the redirect URI before anything else runs.
+const normalizeLoopbackHost = () => {
+  const redirectHost = new URL(REDIRECT_URI).hostname;
+  const currentHost = window.location.hostname;
+  const loopbackHosts = ['localhost', '127.0.0.1'];
 
-  // Check for existing token on mount
-  useEffect(() => {
-    const token = sessionStorage.getItem('spotify_access_token');
-    const tokenExpiry = sessionStorage.getItem('spotify_token_expiry');
+  if (
+    currentHost !== redirectHost &&
+    loopbackHosts.includes(currentHost) &&
+    loopbackHosts.includes(redirectHost)
+  ) {
+    const url = new URL(window.location.href);
+    url.hostname = redirectHost;
+    window.location.replace(url.toString());
+    return true;
+  }
+  return false;
+};
 
-    if (token && tokenExpiry) {
-      const now = Date.now();
-      if (now < parseInt(tokenExpiry, 10)) {
-        setAccessToken(token);
-      } else {
-        // Token expired, clear it
-        sessionStorage.removeItem('spotify_access_token');
-        sessionStorage.removeItem('spotify_token_expiry');
-      }
+const isRedirecting = normalizeLoopbackHost();
+
+// Read a still-valid stored token, clearing it if expired
+const readStoredToken = () => {
+  const token = sessionStorage.getItem('spotify_access_token');
+  const tokenExpiry = sessionStorage.getItem('spotify_token_expiry');
+
+  if (token && tokenExpiry) {
+    if (Date.now() < parseInt(tokenExpiry, 10)) {
+      return token;
     }
+    sessionStorage.removeItem('spotify_access_token');
+    sessionStorage.removeItem('spotify_token_expiry');
+  }
 
-    setIsLoading(false);
-  }, []);
+  return null;
+};
+
+export function useSpotifyAuth() {
+  const [accessToken, setAccessToken] = useState(readStoredToken);
+  const [isLoading, setIsLoading] = useState(
+    () => new URLSearchParams(window.location.search).has('code')
+  );
+  const [error, setError] = useState(null);
 
   // Handle OAuth callback
   useEffect(() => {
@@ -71,10 +93,18 @@ export function useSpotifyAuth() {
         } finally {
           setIsLoading(false);
         }
+      } else if (code) {
+        // Code came back but the PKCE verifier is gone (e.g. login was
+        // started on a different origin) — restart the flow instead of hanging
+        setError('Login session expired or was started on a different address. Please log in again.');
+        setIsLoading(false);
+        window.history.replaceState({}, document.title, '/');
       }
     };
 
-    handleCallback();
+    if (!isRedirecting) {
+      handleCallback();
+    }
   }, []);
 
   // Initiate login flow

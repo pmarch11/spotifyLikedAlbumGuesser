@@ -3,6 +3,13 @@ import { useRef, useEffect, useState } from 'react';
 const COLS = 3;
 const ROWS = 2;
 
+// Canvas 2D filters are unsupported before Safari/iOS 18 (silently no-op),
+// so those browsers must use the CSS blur fallback instead
+const supportsCanvasFilter = (() => {
+  const ctx = document.createElement('canvas').getContext('2d');
+  return !!ctx && typeof ctx.filter === 'string';
+})();
+
 function TileGrid({ imageUrl, tileOrder, revealedTileCount }) {
   const prevent = (e) => e.preventDefault();
 
@@ -41,7 +48,7 @@ function TileGrid({ imageUrl, tileOrder, revealedTileCount }) {
 
 export function BlurredImage({ imageUrl, blurLevel, altText, mode, tileOrder, revealedTileCount }) {
   const canvasRef = useRef(null);
-  const [useCssFallback, setUseCssFallback] = useState(false);
+  const [useCssFallback, setUseCssFallback] = useState(!supportsCanvasFilter);
 
   useEffect(() => {
     if (mode === 'tile' || useCssFallback) return;
@@ -98,7 +105,13 @@ export function BlurredImage({ imageUrl, blurLevel, altText, mode, tileOrder, re
           onContextMenu={prevent}
           onDragStart={prevent}
           className="w-full h-full object-cover transition-all duration-700"
-          style={{ filter: `blur(${blurLevel}px)`, pointerEvents: 'none' }}
+          style={{
+            filter: `blur(${blurLevel}px)`,
+            // Oversize while blurred so the soft edge fringe stays outside
+            // the frame, matching the canvas version's padded draw
+            transform: `scale(${1 + blurLevel / 100})`,
+            pointerEvents: 'none',
+          }}
         />
       </div>
     );

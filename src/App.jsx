@@ -9,8 +9,9 @@ function App() {
   const { accessToken, isAuthenticated, isLoading: authLoading, error: authError, login, logout } = useSpotifyAuth();
   const { albums, isLoading: albumsLoading, error: albumsError } = useSpotifyAPI(accessToken);
 
-  // null = on the home screen; { mode, goal } = in a game
-  // mode is the reveal style ('blur' | 'tile'); goal is the gauntlet target streak (null = endless)
+  // null = on the home screen; { mode, goal, ultraHard } = in a game
+  // mode is the reveal style ('blur' | 'tile'); goal is the gauntlet target streak (null = endless);
+  // ultraHard hides artist names from the guess autocomplete
   const [session, setSession] = useState(null);
 
   // Show loading state during authentication
@@ -71,7 +72,7 @@ function App() {
   // Show home / game
   if (albums.length > 0) {
     if (session === null) {
-      return <Home onStart={(mode, goal) => setSession({ mode, goal })} onLogout={logout} />;
+      return <Home onStart={(mode, goal, ultraHard) => setSession({ mode, goal, ultraHard })} onLogout={logout} />;
     }
     return (
       <Game
@@ -79,6 +80,7 @@ function App() {
         accessToken={accessToken}
         mode={session.mode}
         goal={session.goal}
+        ultraHard={session.ultraHard}
         onHome={() => setSession(null)}
       />
     );

@@ -39,12 +39,15 @@ const GAUNTLETS = [
 
 export function Home({ onStart, onLogout }) {
   const [mode, setMode] = useState(() => localStorage.getItem('gameMode') ?? 'blur');
+  const [ultraHard, setUltraHard] = useState(() => localStorage.getItem('ultraHard') === 'true');
+  const [showUltraHelp, setShowUltraHelp] = useState(false);
   // 'main' shows the Endless / Gauntlet buttons; 'gauntlet' shows the difficulty picker
   const [view, setView] = useState('main');
 
   const start = (goal) => {
     localStorage.setItem('gameMode', mode);
-    onStart(mode, goal);
+    localStorage.setItem('ultraHard', String(ultraHard));
+    onStart(mode, goal, ultraHard);
   };
 
   return (
@@ -99,6 +102,37 @@ export function Home({ onStart, onLogout }) {
               );
             })}
           </div>
+
+          {/* Ultra hard toggle */}
+          <div className="flex items-center justify-between px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-2xl">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-white">Ultra hard</span>
+              <button
+                type="button"
+                onClick={() => setShowUltraHelp(true)}
+                aria-label="What is ultra hard mode?"
+                className="w-5 h-5 flex items-center justify-center rounded-full border text-[10px] font-bold transition-all border-white/[0.15] text-gray-500 hover:text-white hover:border-white/[0.3]"
+              >
+                ?
+              </button>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={ultraHard}
+              aria-label="Ultra hard mode"
+              onClick={() => setUltraHard(v => !v)}
+              className={`relative w-11 h-6 flex-shrink-0 rounded-full transition-colors ${
+                ultraHard ? 'bg-[#1DB954]' : 'bg-white/[0.12]'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  ultraHard ? 'translate-x-5' : ''
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         {/* Game modes */}
@@ -143,6 +177,46 @@ export function Home({ onStart, onLogout }) {
           </div>
         )}
       </div>
+
+      {/* Ultra hard help modal */}
+      {showUltraHelp && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          onClick={() => setShowUltraHelp(false)}
+        >
+          <div
+            className="bg-[#0f0f0f] border border-white/[0.1] rounded-2xl max-w-md w-full p-6 shadow-2xl text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">Ultra Hard Mode</h2>
+              <button
+                onClick={() => setShowUltraHelp(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                  <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4 text-sm text-gray-300">
+              <p>
+                Autocomplete suggestions show only album names — artist names are hidden, and
+                typing an artist&apos;s name won&apos;t bring up their albums.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowUltraHelp(false)}
+              className="w-full mt-6 px-4 py-2.5 bg-[#1DB954] hover:bg-[#1ed760] text-white font-semibold rounded-lg transition-colors"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Logout */}
       <div className="relative z-10 flex justify-center pt-6">
