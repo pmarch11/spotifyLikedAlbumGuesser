@@ -11,5 +11,15 @@ export default defineConfig({
   server: {
     port: 8080,
     host: '0.0.0.0',
+    // Mirror the /itunes-api rewrite in vercel.json so dev and prod both hit
+    // iTunes same-origin (its CDN caches CORS headers per URL, breaking
+    // cross-origin fetches from any second origin)
+    proxy: {
+      '/itunes-api': {
+        target: 'https://itunes.apple.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/itunes-api/, ''),
+      },
+    },
   },
 })

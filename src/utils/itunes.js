@@ -169,7 +169,10 @@ async function fetchArtistAlbums(artist) {
     limit: '12',
   });
 
-  const response = await fetch(`https://itunes.apple.com/lookup?${params.toString()}`);
+  // Proxied same-origin (vite dev proxy + vercel.json rewrite) because Apple's
+  // CDN caches Access-Control-Allow-Origin per URL, so direct cross-origin
+  // fetches break for every origin after the first to request a given URL
+  const response = await fetch(`/itunes-api/lookup?${params.toString()}`);
   if (!response.ok) throw new Error('Failed to fetch albums from iTunes');
 
   const data = await response.json();
