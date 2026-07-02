@@ -17,6 +17,7 @@ precision highp float;
 
 uniform vec3 iResolution;
 uniform float uSpin; // accumulated rotation angle, driven from JS
+uniform float uTilt; // residual X tilt after a drag ends, eased back to 0 in JS
 uniform vec4 iMouse;
 uniform sampler2D uArt;
 uniform float uHasArt;
@@ -77,7 +78,7 @@ vec2 surfaceMin(vec2 a, vec2 b)
 vec2 getDist(vec3 p) {
 
     vec3 diskPos = vec3(0,0,3);
-    mat3 rot = iMouse.z < 1.0 ? rotateY(uSpin) : rotateX(iMouse.y*6.28/iResolution.y) * rotateY(-(iMouse.x*6.28)/iResolution.x);
+    mat3 rot = iMouse.z < 1.0 ? rotateX(uTilt) * rotateY(uSpin) : rotateX(iMouse.y*6.28/iResolution.y) * rotateY(-(iMouse.x*6.28)/iResolution.x);
     vec3 diskPosRot = (p-diskPos)*rot+diskPos; // position with Y rotation
 
     float outerDisk = sdCylinder(
@@ -293,7 +294,7 @@ void getMat(in vec3 p, in float id, inout vec3 col, inout float sp, inout float 
             refr = 0.0;
 
             vec3 diskPos = vec3(0,0,3);
-            mat3 rot = iMouse.z < 1.0 ? rotateY(uSpin) : rotateX(iMouse.y*6.28/iResolution.y) * rotateY(-(iMouse.x*6.28)/iResolution.x);
+            mat3 rot = iMouse.z < 1.0 ? rotateX(uTilt) * rotateY(uSpin) : rotateX(iMouse.y*6.28/iResolution.y) * rotateY(-(iMouse.x*6.28)/iResolution.x);
             vec3 diskPosRot = (p-diskPos)*rot+diskPos; // position with Y rotation
 
             // Values for diffraction
@@ -347,7 +348,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     // Album-art label printed on one face of the disc (materials 1 and 2)
     if (uHasArt > 0.5 && rs.y > 0.5 && rs.y < 2.5) {
         vec3 diskPos = vec3(0,0,3);
-        mat3 rot = iMouse.z < 1.0 ? rotateY(uSpin) : rotateX(iMouse.y*6.28/iResolution.y) * rotateY(-(iMouse.x*6.28)/iResolution.x);
+        mat3 rot = iMouse.z < 1.0 ? rotateX(uTilt) * rotateY(uSpin) : rotateX(iMouse.y*6.28/iResolution.y) * rotateY(-(iMouse.x*6.28)/iResolution.x);
         vec3 lpos = (p - diskPos) * rot; // hit point in the disc's local frame
         vec3 ln = n * rot;               // normal in the disc's local frame
         if (ln.z < -0.5) {               // label face only; data face keeps diffraction
@@ -495,6 +496,7 @@ export function Disc({ className }) {
 
     const uRes = gl.getUniformLocation(prog, 'iResolution');
     const uSpin = gl.getUniformLocation(prog, 'uSpin');
+    const uTilt = gl.getUniformLocation(prog, 'uTilt');
     const uMouse = gl.getUniformLocation(prog, 'iMouse');
     const uArt = gl.getUniformLocation(prog, 'uArt');
     const uHasArt = gl.getUniformLocation(prog, 'uHasArt');
@@ -546,7 +548,9 @@ export function Disc({ className }) {
     const BOOST_DECAY = 1.6; // exponential decay rate of the flick, per second
     const HOLD_MS = 250;
     const TAP_SLOP_PX = 8;
+    const TILT_DECAY = 3; // per-second rate the released tilt eases back to flat
     let spinAngle = 0;
+    let tiltAngle = 0;
     let boost = 0;
     const mouse = { x: 0, y: 0, down: false };
     let pressed = false;
@@ -586,8 +590,13 @@ export function Disc({ className }) {
       clearTimeout(holdTimer);
       if (mouse.down) {
         mouse.down = false;
-        // Resume the auto-spin from the dragged Y angle instead of snapping
+        // Resume the auto-spin from the exact dragged pose instead of snapping:
+        // carry over the Y angle, and hand the X tilt to uTilt (eased to flat
+        // in the frame loop). Constants match the shader's manual-mode mapping.
         spinAngle = -(mouse.x * 6.28) / canvas.width;
+        tiltAngle = (mouse.y * 6.28) / canvas.height;
+        // Take the short way back to flat, not a full backward roll
+        if (tiltAngle > 3.14) tiltAngle -= 6.28;
       } else {
         // Quick tap: flick the disc (stacks up to a cap on repeated taps)
         boost = Math.min(boost + TAP_BOOST, 3 * TAP_BOOST);
@@ -605,9 +614,11 @@ export function Disc({ className }) {
       lastT = now;
       spinAngle += dt * (BASE_SPIN + boost);
       boost *= Math.exp(-BOOST_DECAY * dt);
+      tiltAngle *= Math.exp(-TILT_DECAY * dt);
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform3f(uRes, canvas.width, canvas.height, 1);
       gl.uniform1f(uSpin, spinAngle);
+      gl.uniform1f(uTilt, tiltAngle);
       gl.uniform4f(uMouse, mouse.x, mouse.y, mouse.down ? 1 : 0, 0);
       gl.uniform1f(uHasArt, hasArt ? 1 : 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
