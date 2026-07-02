@@ -5,6 +5,11 @@ import { extractUniqueAlbums } from '../utils/gameLogic';
 const CACHE_KEY = 'spotify_album_cache';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+// Don't background-refresh a cache younger than this. A fresh fetch is ~21
+// requests against an app-wide rate limit shared by every player, so we only
+// pay that cost a couple of times a day per user.
+const CACHE_REFRESH_AFTER_MS = 6 * 60 * 60 * 1000; // 6 hours
+
 // After a 429, don't hit the API again for this long — retrying while limited
 // can extend the penalty. Spotify hides Retry-After from browsers, so when the
 // real wait is unknown this is our own conservative guess.
@@ -78,17 +83,21 @@ export function getRandomCachedAlbumArtUrl() {
   return null;
 }
 
-function readCache() {
+function readCacheEntry() {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const { timestamp, albums } = JSON.parse(raw);
     if (!Array.isArray(albums) || albums.length === 0) return null;
     if (Date.now() - timestamp > CACHE_TTL_MS) return null;
-    return albums;
+    return { timestamp, albums };
   } catch {
     return null;
   }
+}
+
+function readCache() {
+  return readCacheEntry()?.albums ?? null;
 }
 
 function writeCache(albums) {
@@ -161,7 +170,11 @@ export function useSpotifyAPI(accessToken) {
     // the cache in the background — next session picks up new likes and (for large
     // libraries) a fresh random sample. State is never swapped mid-session, which
     // would change the album pool and autocomplete during an active game.
-    const hasCache = readCache() !== null;
+    const cacheEntry = readCacheEntry();
+    const hasCache = cacheEntry !== null;
+
+    // Cache is still fresh: play from it and skip the refresh entirely
+    if (hasCache && Date.now() - cacheEntry.timestamp < CACHE_REFRESH_AFTER_MS) return;
 
     fetchFresh()
       .then((fresh) => {
