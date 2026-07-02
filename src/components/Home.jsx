@@ -4,228 +4,169 @@ const MODES = [
   {
     id: 'blur',
     title: 'Blur',
-    description: 'The cover starts heavily blurred and sharpens with each guess.',
+    description: 'Starts fuzzy, sharpens with every guess.',
     icon: (
-      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+      <svg className="w-9 h-9" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <filter id="homeBlurIcon" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="1.6" />
-          </filter>
+          <radialGradient id="homeBlurIcon" cx="35%" cy="30%" r="80%">
+            <stop offset="0%" stopColor="#C9B79B" />
+            <stop offset="100%" stopColor="#5C4A38" />
+          </radialGradient>
         </defs>
-        <circle cx="12" cy="12" r="6.5" filter="url(#homeBlurIcon)" />
+        <rect x="4" y="4" width="28" height="28" rx="8" fill="url(#homeBlurIcon)" />
       </svg>
     ),
   },
   {
     id: 'tile',
-    title: 'Tile',
-    description: 'The cover is split into 6 tiles. One tile reveals with each guess.',
+    title: 'Tiles',
+    description: 'Six panels. One flips per guess.',
     icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" opacity="0.4" />
-        <rect x="3" y="14" width="7" height="7" rx="1" opacity="0.4" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
+      <svg className="w-9 h-9" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="4" width="12" height="12" rx="3" fill="#5C4A38" />
+        <rect x="20" y="4" width="12" height="12" rx="3" fill="none" stroke="#5C4A38" strokeWidth="2" opacity="0.5" />
+        <rect x="4" y="20" width="12" height="12" rx="3" fill="none" stroke="#5C4A38" strokeWidth="2" opacity="0.5" />
+        <rect x="20" y="20" width="12" height="12" rx="3" fill="#C9B79B" />
       </svg>
     ),
   },
 ];
 
-const GAUNTLETS = [
-  { id: 'beginner', title: 'Beginner', goal: 3 },
-  { id: 'intermediate', title: 'Intermediate', goal: 5 },
-  { id: 'expert', title: 'Expert', goal: 10 },
+const RUN_LENGTHS = [
+  { id: 'endless', label: 'Endless', goal: null },
+  { id: '3', label: '3', goal: 3 },
+  { id: '5', label: '5', goal: 5 },
+  { id: '10', label: '10', goal: 10 },
 ];
 
 export function Home({ onStart, onLogout }) {
   const [mode, setMode] = useState(() => localStorage.getItem('gameMode') ?? 'blur');
   const [ultraHard, setUltraHard] = useState(() => localStorage.getItem('ultraHard') === 'true');
-  const [showUltraHelp, setShowUltraHelp] = useState(false);
-  // 'main' shows the Endless / Gauntlet buttons; 'gauntlet' shows the difficulty picker
-  const [view, setView] = useState('main');
+  const [runLength, setRunLength] = useState(() => {
+    const saved = localStorage.getItem('runLength');
+    return RUN_LENGTHS.some((r) => r.id === saved) ? saved : 'endless';
+  });
 
-  const start = (goal) => {
+  // Current streak carried over from the last session, shown in the header chip
+  const streak =
+    Number(localStorage.getItem('discStreak') ?? localStorage.getItem('needleStreak')) || 0;
+
+  const start = () => {
     localStorage.setItem('gameMode', mode);
     localStorage.setItem('ultraHard', String(ultraHard));
+    localStorage.setItem('runLength', runLength);
+    const goal = RUN_LENGTHS.find((r) => r.id === runLength).goal;
     onStart(mode, goal, ultraHard);
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-black px-4 py-10 relative overflow-hidden">
-      {/* Animated background gradients */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-80 h-80 bg-[#1DB954] rounded-full mix-blend-screen filter blur-[128px] opacity-20 animate-pulse" style={{ animationDuration: '6s' }}></div>
-        <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-[#1ed760] rounded-full mix-blend-screen filter blur-[128px] opacity-20 animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }}></div>
-      </div>
-
-      <div className="relative z-10 w-full max-w-md mx-auto flex-1 flex flex-col justify-center text-center space-y-8">
-        {/* Icon + Title */}
-        <div className="space-y-5">
-          <div className="flex justify-center">
-            <div className="w-20 h-20 flex-shrink-0 bg-gradient-to-br from-[#1DB954] to-[#1aa34a] rounded-3xl flex items-center justify-center shadow-2xl shadow-[#1DB954]/40">
-              <svg className="w-16 h-16 flex-shrink-0 text-white" viewBox="0 0 24 24" fill="none">
-                <path d="M4 5C7.5 3.5 10.5 3.5 14 5C17.5 6.5 19.5 7.5 20 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                <path d="M5.5 9C8.5 7.8 11.5 7.8 14.5 9C17.5 10.2 19 10.8 19.5 11.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                <path d="M7 13C9.5 12 12 12 14.5 13C17 14 18 14.5 18.5 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                <path d="M10 19C10 18 10.5 17.5 11.2 17C11.9 16.6 12.2 16.3 12.2 15.5C12.2 14.8 11.7 14.3 11 14.3C10.3 14.3 9.8 14.8 9.8 15.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                <circle cx="11" cy="21.5" r="0.8" fill="currentColor" />
-              </svg>
-            </div>
-          </div>
-          <h1 className="text-3xl font-black text-white leading-tight">Album Cover Guesser</h1>
-          <p className="text-gray-400 leading-relaxed">
-            Guess albums from your liked songs as the cover reveals itself and you get gradual hints.
-          </p>
-        </div>
-
-        {/* Mode selection */}
-        <div className="space-y-3 text-left">
-          <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest text-center">Choose a mode</p>
-          <div className="grid grid-cols-2 gap-3">
-            {MODES.map(m => {
-              const selected = mode === m.id;
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => setMode(m.id)}
-                  aria-pressed={selected}
-                  className={`flex flex-col gap-2 p-4 rounded-2xl border text-left transition-all ${
-                    selected
-                      ? 'bg-[#1DB954]/10 border-[#1DB954] shadow-lg shadow-[#1DB954]/10'
-                      : 'bg-white/[0.03] border-white/[0.08] hover:border-white/[0.18]'
-                  }`}
-                >
-                  <span className={selected ? 'text-[#1DB954]' : 'text-gray-400'}>{m.icon}</span>
-                  <span className="text-sm font-bold text-white">{m.title}</span>
-                  <span className="text-xs text-gray-500 leading-snug">{m.description}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Ultra hard toggle */}
-          <div className="flex items-center justify-between px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-2xl">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-white">Ultra hard</span>
-              <button
-                type="button"
-                onClick={() => setShowUltraHelp(true)}
-                aria-label="What is ultra hard mode?"
-                className="w-5 h-5 flex items-center justify-center rounded-full border text-[10px] font-bold transition-all border-white/[0.15] text-gray-500 hover:text-white hover:border-white/[0.3]"
-              >
-                ?
-              </button>
-            </div>
+    <div className="min-h-screen bg-paper flex flex-col px-5 py-6">
+      <div className="w-full max-w-md mx-auto flex-1 flex flex-col">
+        {/* Header */}
+        <header className="flex items-center justify-between mb-8">
+          <span className="eyebrow text-ink">Disc Cover</span>
+          <div className="flex items-center gap-3">
+            {streak > 0 && (
+              <span className="flex items-center gap-1.5 px-3 py-1 bg-cream border border-ink/10 rounded-full eyebrow text-accent-deep">
+                <span className="text-accent">◆</span> {streak} streak
+              </span>
+            )}
             <button
-              type="button"
-              role="switch"
-              aria-checked={ultraHard}
-              aria-label="Ultra hard mode"
-              onClick={() => setUltraHard(v => !v)}
-              className={`relative w-11 h-6 flex-shrink-0 rounded-full transition-colors ${
-                ultraHard ? 'bg-[#1DB954]' : 'bg-white/[0.12]'
-              }`}
+              onClick={onLogout}
+              className="text-sm text-ink-soft hover:text-ink transition-colors"
             >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                  ultraHard ? 'translate-x-5' : ''
+              Log out
+            </button>
+          </div>
+        </header>
+
+        {/* Title */}
+        <h1 className="font-display font-black text-4xl text-ink mb-7">Set up your run</h1>
+
+        {/* Reveal mode */}
+        <p className="eyebrow text-ink/50 mb-3">How the cover reveals</p>
+        <div className="grid grid-cols-2 gap-3 mb-7">
+          {MODES.map((m) => {
+            const selected = mode === m.id;
+            return (
+              <button
+                key={m.id}
+                onClick={() => setMode(m.id)}
+                aria-pressed={selected}
+                className={`flex flex-col items-start gap-2 p-4 rounded-2xl text-left bg-cream transition-all ${
+                  selected
+                    ? 'border-2 border-ink shadow-[0_8px_20px_rgba(43,33,26,0.1)]'
+                    : 'border border-ink/12 hover:border-ink/30'
                 }`}
-              />
-            </button>
-          </div>
+              >
+                {m.icon}
+                <span className="text-base font-bold text-ink">{m.title}</span>
+                <span className="text-xs text-ink-soft leading-snug">{m.description}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Game modes */}
-        {view === 'main' ? (
-          <div className="space-y-3">
-            <button
-              onClick={() => start(null)}
-              className="w-full py-4 bg-gradient-to-r from-[#1DB954] to-[#1ed760] hover:from-[#1ed760] hover:to-[#1DB954] text-white font-bold text-base rounded-full transition-all duration-200 shadow-2xl shadow-[#1DB954]/30 transform hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Endless mode
-            </button>
-            <button
-              onClick={() => setView('gauntlet')}
-              className="w-full py-4 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.1] text-white font-bold text-base rounded-full transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Gauntlet mode
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest text-center">
-              How many in a row?
+        {/* Run length */}
+        <p className="eyebrow text-ink/50 mb-3">Run length</p>
+        <div className="grid grid-cols-4 gap-2.5 mb-3">
+          {RUN_LENGTHS.map((r) => {
+            const selected = runLength === r.id;
+            return (
+              <button
+                key={r.id}
+                onClick={() => setRunLength(r.id)}
+                aria-pressed={selected}
+                className={`py-3 rounded-full text-sm font-bold transition-all ${
+                  selected
+                    ? 'bg-accent text-cream shadow-[0_8px_18px_rgba(207,91,39,0.35)]'
+                    : 'bg-cream border border-ink/12 text-ink hover:border-ink/30'
+                }`}
+              >
+                {r.id === 'endless' ? <span>∞ {r.label}</span> : r.label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-ink-soft leading-relaxed mb-7">
+          Pick a number for a gauntlet — clear it without a single miss, or the run ends.
+        </p>
+
+        {/* Ultra hard */}
+        <div className="flex items-center justify-between gap-4 px-4 py-4 bg-cream border border-ink/12 rounded-2xl">
+          <div>
+            <p className="text-base font-bold text-ink">Ultra hard</p>
+            <p className="text-xs text-ink-soft mt-0.5">
+              Suggestions show album names only — no artists.
             </p>
-            {GAUNTLETS.map(g => (
-              <button
-                key={g.id}
-                onClick={() => start(g.goal)}
-                className="w-full flex items-center justify-between px-5 py-3.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] hover:border-[#1DB954]/50 rounded-2xl transition-all duration-200 group"
-              >
-                <span className="text-sm font-bold text-white">{g.title}</span>
-                <span className="text-xs font-bold text-gray-400 group-hover:text-[#1DB954] transition-colors">
-                  {g.goal} in a row
-                </span>
-              </button>
-            ))}
-            <button
-              onClick={() => setView('main')}
-              className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-300 transition-colors"
-            >
-              ← Back
-            </button>
           </div>
-        )}
-      </div>
-
-      {/* Ultra hard help modal */}
-      {showUltraHelp && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-          onClick={() => setShowUltraHelp(false)}
-        >
-          <div
-            className="bg-[#0f0f0f] border border-white/[0.1] rounded-2xl max-w-md w-full p-6 shadow-2xl text-left"
-            onClick={(e) => e.stopPropagation()}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={ultraHard}
+            aria-label="Ultra hard mode"
+            onClick={() => setUltraHard((v) => !v)}
+            className={`relative w-12 h-7 flex-shrink-0 rounded-full transition-colors ${
+              ultraHard ? 'bg-accent' : 'bg-ink/15'
+            }`}
           >
-            <div className="flex items-start justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">Ultra Hard Mode</h2>
-              <button
-                onClick={() => setShowUltraHelp(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-                aria-label="Close"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                  <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4 text-sm text-gray-300">
-              <p>
-                Autocomplete suggestions show only album names — artist names are hidden, and
-                typing an artist&apos;s name won&apos;t bring up their albums.
-              </p>
-            </div>
-
-            <button
-              onClick={() => setShowUltraHelp(false)}
-              className="w-full mt-6 px-4 py-2.5 bg-[#1DB954] hover:bg-[#1ed760] text-white font-semibold rounded-lg transition-colors"
-            >
-              Got it!
-            </button>
-          </div>
+            <span
+              className={`absolute top-0.5 left-0.5 w-6 h-6 bg-cream rounded-full shadow transition-transform ${
+                ultraHard ? 'translate-x-5' : ''
+              }`}
+            />
+          </button>
         </div>
-      )}
 
-      {/* Logout */}
-      <div className="relative z-10 flex justify-center pt-6">
-        <button
-          onClick={onLogout}
-          className="px-4 py-2 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.09] rounded-lg text-gray-400 hover:text-white text-xs font-semibold transition-all"
-        >
-          Logout
-        </button>
+        {/* Start */}
+        <div className="flex-1 flex flex-col justify-end pt-8">
+          <button
+            onClick={start}
+            className="w-full py-4 bg-accent hover:bg-accent-deep text-cream font-bold text-lg rounded-full transition-all transform hover:scale-[1.01] active:scale-[0.98] shadow-[0_14px_30px_rgba(207,91,39,0.35)]"
+          >
+            Start
+          </button>
+        </div>
       </div>
     </div>
   );

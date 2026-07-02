@@ -34,7 +34,7 @@ function TileGrid({ imageUrl, tileOrder, revealedTileCount }) {
             key={tileIndex}
             style={{
               backgroundImage: isRevealed ? `url(${imageUrl})` : 'none',
-              backgroundColor: isRevealed ? 'transparent' : '#111',
+              backgroundColor: isRevealed ? 'transparent' : '#3A2E22',
               backgroundSize: `${COLS * 100}% ${ROWS * 100}%`,
               backgroundPosition: `${bgPosX} ${bgPosY}`,
               transition: 'background-color 0.4s ease',
@@ -81,9 +81,9 @@ export function BlurredImage({ imageUrl, blurLevel, altText, mode, tileOrder, re
 
   const prevent = (e) => e.preventDefault();
 
-  const wrapperClass = 'relative aspect-square w-full rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10';
+  const wrapperClass = 'relative aspect-square w-full rounded-2xl overflow-hidden ring-1 ring-ink/10 bg-ink';
   const wrapperStyle = {
-    boxShadow: '0 0 40px rgba(29,185,84,0.15), 0 20px 60px rgba(0,0,0,0.6)',
+    boxShadow: '0 18px 44px rgba(43,33,26,0.28)',
     userSelect: 'none',
   };
 

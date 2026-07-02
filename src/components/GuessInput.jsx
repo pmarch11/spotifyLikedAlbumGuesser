@@ -96,7 +96,7 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
 
   return (
     <form onSubmit={handleSubmit} className="w-full relative">
-      <div className="flex gap-2">
+      <div className="flex gap-2.5 items-center">
         <div className="flex-1 relative">
           <input
             ref={inputRef}
@@ -105,31 +105,31 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             disabled={disabled}
-            placeholder="Type an album name…"
+            placeholder="Name that album…"
             autoComplete="off"
-            className="w-full px-3.5 py-2.5 bg-white/[0.06] border border-white/[0.1] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#1DB954]/60 focus:ring-1 focus:ring-[#1DB954]/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full px-4 py-3.5 bg-card border border-ink/12 rounded-2xl text-ink placeholder-ink/40 focus:outline-none focus:border-ink/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           />
 
           {/* Autocomplete dropdown */}
           {showSuggestions && (
             <div
               ref={suggestionsRef}
-              className="absolute z-10 w-full mt-1.5 bg-[#1a1a1a] border border-white/[0.1] rounded-xl shadow-2xl max-h-64 overflow-y-auto"
+              className="absolute z-10 w-full mt-1.5 bg-card border border-ink/12 rounded-2xl shadow-[0_16px_40px_rgba(43,33,26,0.2)] max-h-64 overflow-y-auto overflow-x-hidden"
             >
               {suggestions.map((album, index) => (
                 <button
                   key={album.id}
                   type="button"
                   onClick={() => handleSuggestionClick(album)}
-                  className={`w-full px-3.5 py-2.5 text-left transition-colors ${
+                  className={`w-full px-4 py-2.5 text-left transition-colors ${
                     index === selectedIndex
-                      ? 'bg-[#1DB954]/15 border-l-2 border-[#1DB954]'
-                      : 'hover:bg-white/[0.05] border-l-2 border-transparent'
-                  } ${index !== suggestions.length - 1 ? 'border-b border-white/[0.06]' : ''}`}
+                      ? 'bg-accent/10 border-l-2 border-accent'
+                      : 'hover:bg-ink/[0.04] border-l-2 border-transparent'
+                  } ${index !== suggestions.length - 1 ? 'border-b border-ink/[0.07]' : ''}`}
                 >
-                  <div className="text-sm font-semibold text-white">{album.name}</div>
+                  <div className="text-sm font-semibold text-ink">{album.name}</div>
                   {!ultraHard && (
-                    <div className="text-xs text-gray-500 mt-0.5">
+                    <div className="text-xs text-ink-soft mt-0.5">
                       {album.mainArtists.join(', ')}
                     </div>
                   )}
@@ -142,9 +142,12 @@ export function GuessInput({ onGuess, onSkipHint, disabled, allAlbums, currentAl
         <button
           type="submit"
           disabled={disabled}
-          className="px-5 py-2.5 bg-[#1DB954] hover:bg-[#1ed760] text-white text-sm font-bold rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-[#1DB954]/20 flex-shrink-0"
+          title={guess.trim() ? 'Submit guess' : 'Skip this guess for a hint'}
+          className="w-[52px] h-[52px] flex-shrink-0 flex items-center justify-center bg-accent hover:bg-accent-deep text-cream rounded-full transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_10px_22px_rgba(207,91,39,0.35)]"
         >
-          {guess.trim() ? 'Guess' : 'Skip'}
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
         </button>
       </div>
     </form>

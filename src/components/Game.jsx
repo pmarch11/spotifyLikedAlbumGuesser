@@ -26,12 +26,13 @@ function newGame(albums) {
   };
 }
 
-export function Game({ albums, accessToken, mode, goal, ultraHard, onHome }) {
-  const [showHelpModal, setShowHelpModal] = useState(false);
+export function Game({ albums, mode, goal, ultraHard, onHome }) {
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [streak, setStreak] = useState(0);
   // Streak value at the moment it was broken, so the loss screen can show it
   const [lostStreak, setLostStreak] = useState(0);
+  // Which album of this run we're on, shown in the header ("Album 7 · Endless")
+  const [round, setRound] = useState(1);
 
   // Albums are loaded before Game mounts, so the first round can be created
   // directly in the initial state
@@ -42,6 +43,11 @@ export function Game({ albums, accessToken, mode, goal, ultraHard, onHome }) {
   const playedAlbumIdsRef = useRef(
     new Set(gameState.currentAlbum ? [gameState.currentAlbum.id] : [])
   );
+
+  // Keep the streak available to the home screen's header chip
+  useEffect(() => {
+    localStorage.setItem('discStreak', String(streak));
+  }, [streak]);
 
   const startNewGame = useCallback(() => {
     const played = playedAlbumIdsRef.current;
@@ -54,6 +60,7 @@ export function Game({ albums, accessToken, mode, goal, ultraHard, onHome }) {
     const next = newGame(pool);
     if (!next.currentAlbum) return;
     played.add(next.currentAlbum.id);
+    setRound((r) => r + 1);
     setGameState(next);
   }, [albums]);
 
@@ -173,461 +180,181 @@ export function Game({ albums, accessToken, mode, goal, ultraHard, onHome }) {
 
   if (!gameState.currentAlbum) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <p className="text-xl text-gray-300">Loading your albums...</p>
+      <div className="min-h-screen flex items-center justify-center bg-paper">
+        <p className="text-lg text-ink-soft">Loading your albums...</p>
       </div>
     );
   }
 
   const isGameOver = gameState.gameStatus !== 'playing';
-  const guessesLeft = gameState.maxGuesses - gameState.guesses.length;
 
   // Gauntlet mode: goal is the target streak. In endless mode goal is null.
   const gauntletActive = goal != null;
-  const streakDenom = gauntletActive ? goal : 10;
   const gauntletComplete = gauntletActive && gameState.gameStatus === 'won' && streak >= goal;
   const gauntletFailed = gauntletActive && gameState.gameStatus === 'lost';
 
-  const playAgainLabel = !gauntletActive
-    ? 'Play Again'
-    : gauntletComplete
-      ? 'New Gauntlet'
-      : gauntletFailed
-        ? 'Try Again'
-        : 'Next Album →';
+  const playAgainLabel = gauntletComplete
+    ? 'New run'
+    : gauntletFailed
+      ? 'Try again'
+      : 'Next album';
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
-      {/* ── Sticky header ── */}
-      <header className="sticky top-0 z-50 border-b border-white/[0.07] bg-[#0a0a0a]/90 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 flex-shrink-0 bg-gradient-to-br from-[#1DB954] to-[#1ed760] rounded-lg flex items-center justify-center">
-              <svg className="w-8 h-8 flex-shrink-0 text-white" viewBox="0 0 24 24" fill="none">
-                {/* Spotify logo arcs */}
-                <path d="M6 6.5C8.5 5.5 10.5 5.5 13 6.5C15.5 7.5 17 8 18 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                <path d="M7 9.5C9 8.8 11 8.8 13 9.5C15 10.2 16.5 10.5 17 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                <path d="M8 12.5C9.5 12 11 12 12.5 12.5C14 13 15 13.2 15.5 13.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                {/* Question mark */}
-                <path d="M10.5 17.5C10.5 16.8 10.8 16.5 11.3 16.2C11.8 16 12 15.8 12 15.3C12 14.9 11.7 14.6 11.3 14.6C10.9 14.6 10.6 14.9 10.6 15.3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-                <circle cx="11.3" cy="19.2" r="0.6" fill="currentColor"/>
-              </svg>
-            </div>
-            <span className="text-base font-bold tracking-tight text-white">Album Cover Guesser</span>
-          </div>
+    <div className="min-h-screen bg-paper flex flex-col px-5 py-6">
+      <div className="w-full max-w-md mx-auto flex-1 flex flex-col">
+        {/* Header */}
+        <header className="grid grid-cols-[auto_1fr_auto] items-center gap-3 mb-5">
+          <button
+            onClick={onHome}
+            aria-label="Back to setup"
+            className="w-9 h-9 flex items-center justify-center bg-cream border border-ink/12 rounded-full text-ink-soft hover:text-ink hover:border-ink/30 transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+              <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <span className="eyebrow text-ink/60 text-center">
+            Album {round} · {gauntletActive ? `Gauntlet of ${goal}` : 'Endless'}
+          </span>
+          {gameState.gameStatus === 'lost' ? (
+            <span className="px-3 py-1 bg-cream border border-ink/10 rounded-full eyebrow text-ink/50">
+              <span className="text-accent">◆</span> Streak reset
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 px-3 py-1 bg-cream border border-ink/10 rounded-full eyebrow text-accent-deep">
+              <span className="text-accent">◆</span> {gauntletActive ? `${streak}/${goal}` : streak}
+            </span>
+          )}
+        </header>
 
-          {/* Right side */}
-          <div className="flex items-center gap-2.5">
-            {/* Streak counter - hue ramps from orange to green as the streak climbs to its target */}
-            <div
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all duration-300"
-              style={
-                streak > 0
-                  ? (() => {
-                      // 25° (orange) at the start, 141° (Spotify green) at the target
-                      const hue = 25 + 116 * (Math.min(streak, streakDenom) / streakDenom);
-                      return {
-                        backgroundColor: `hsl(${hue} 90% 50% / 0.15)`,
-                        borderColor: `hsl(${hue} 90% 50% / 0.4)`,
-                        color: `hsl(${hue} 90% 60%)`,
-                      };
-                    })()
-                  : {
-                      backgroundColor: 'rgba(255,255,255,0.04)',
-                      borderColor: 'rgba(255,255,255,0.08)',
-                      color: '#6b7280' /* gray-500 */,
-                    }
-              }
-              title={gauntletActive ? 'Gauntlet progress' : 'Correct guesses in a row'}
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2c.5 3-1.5 4.5-2.8 6C7.7 9.8 7 11.4 7 13a5 5 0 0 0 10 .3c.1-2.2-1-4.2-2.3-5.6.3 1.4-.2 2.4-1 2.9.3-2.6-.9-5.3-1.7-8.6z" />
-              </svg>
-              {gauntletActive ? `${streak}/${goal}` : streak}
-            </div>
-            {/* Help button */}
-            <button
-              onClick={() => setShowHelpModal(true)}
-              className="w-8 h-8 flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg text-gray-400 hover:text-white transition-all"
-              aria-label="How to play"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="10" />
-                <path strokeLinecap="round" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                <circle cx="12" cy="17" r="1.2" fill="currentColor" stroke="none" />
-              </svg>
-            </button>
-            {!isGameOver && (
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-white/[0.04] border border-white/[0.08] rounded-full text-xs font-semibold text-gray-400">
-                <span className="text-[#1DB954]">{guessesLeft}</span>
-                <span>{guessesLeft === 1 ? 'guess' : 'guesses'} left</span>
+        {/* Album art */}
+        <div className="relative mb-3">
+          <BlurredImage
+            imageUrl={gameState.currentAlbum.imageUrl}
+            blurLevel={gameState.blurLevel}
+            altText="Album cover"
+            mode={mode}
+            tileOrder={gameState.tileOrder}
+            revealedTileCount={isGameOver ? 6 : gameState.guesses.length + 1}
+          />
+          {!isGameOver && (
+            <>
+              <div className="absolute top-3 right-3 px-3 py-1 bg-ink/85 rounded-full eyebrow text-cream">
+                Guess {gameState.guesses.length + 1} / {gameState.maxGuesses}
               </div>
-            )}
-            <button
-              onClick={onHome}
-              className="px-3 py-1.5 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.09] rounded-lg text-gray-400 hover:text-white text-xs font-semibold transition-all"
-            >
-              Quit
-            </button>
-          </div>
+              <div className="absolute bottom-3 left-3 eyebrow text-cream/80 [text-shadow:0_1px_4px_rgba(0,0,0,0.5)]">
+                {mode === 'tile' ? 'One panel flips per guess' : 'Cover sharpens each guess'}
+              </div>
+            </>
+          )}
         </div>
-      </header>
 
-      {/* ── Main 2-column layout ── */}
-      <main className="flex-1 max-w-5xl mx-auto w-full px-5 py-4 md:py-7">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-7 items-start">
+        {/* Guess progress segments */}
+        <div className="flex gap-1.5 mb-5">
+          {Array.from({ length: gameState.maxGuesses }).map((_, i) => {
+            const guessWas = gameState.guesses[i];
+            const isWon = gameState.gameStatus === 'won' && i === gameState.guesses.length - 1;
+            const wasUsed = guessWas !== undefined;
+            const isSkip = guessWas === '__skip__';
+            const artistMatch = wasUsed && !isWon && !isSkip && (() => {
+              const matched = findMatchingAlbum(guessWas, albums);
+              return matched ? hasMatchingArtist(matched, gameState.currentAlbum) : false;
+            })();
 
-          {/* ── LEFT: Album art + progress ── */}
-          <div className="flex flex-col gap-4">
-            {/* Image */}
-            <div className="relative">
-              <BlurredImage
-                imageUrl={gameState.currentAlbum.imageUrl}
-                blurLevel={gameState.blurLevel}
-                altText="Album cover"
-                mode={mode}
-                tileOrder={gameState.tileOrder}
-                revealedTileCount={isGameOver ? 6 : gameState.guesses.length + 1}
-              />
-              {/* Guess count chip over the image */}
-              {!isGameOver && (
-                <div className="absolute top-3 right-3 px-3 py-1 bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-xs font-bold text-white">
-                  {gameState.guesses.length} / {gameState.maxGuesses}
-                </div>
-              )}
-            </div>
+            const color = isWon
+              ? 'bg-[#4E7C4E]'
+              : isSkip
+                ? 'bg-ink/25'
+                : artistMatch
+                  ? 'bg-[#D9A441]'
+                  : wasUsed
+                    ? 'bg-accent'
+                    : 'bg-ink/10';
 
-            {/* Guess dots + progress bar */}
-            <div>
-              <div className="flex gap-1 md:gap-1.5 mb-1.5 md:mb-2">
-                {Array.from({ length: gameState.maxGuesses }).map((_, i) => {
-                  const guessWas = gameState.guesses[i];
-                  const isWon = gameState.gameStatus === 'won' && i === gameState.guesses.length - 1;
-                  const wasUsed = guessWas !== undefined && !isWon;
-                  const isSkip = guessWas === '__skip__';
-                  const artistMatch = wasUsed && !isSkip && (() => {
-                    const matched = findMatchingAlbum(guessWas, albums);
-                    return matched ? hasMatchingArtist(matched, gameState.currentAlbum) : false;
-                  })();
-
-                  let style = {};
-                  let icon = null;
-                  let base = 'border';
-
-                  if (isWon) {
-                    base += ' bg-[#1DB954] border-[#1DB954] shadow-[0_0_12px_rgba(29,185,84,0.5)]';
-                    icon = (
-                      <svg className="w-2.5 h-2.5 md:w-3 md:h-3" fill="none" stroke="white" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    );
-                  } else if (artistMatch) {
-                    base += ' bg-yellow-500/20 border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.25)]';
-                    icon = (
-                      <svg className="w-2 h-2 md:w-2.5 md:h-2.5" fill="none" stroke="#fbbf24" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
-                        <path d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    );
-                  } else if (isSkip) {
-                    base += ' bg-white/[0.06] border-white/[0.12]';
-                    icon = (
-                      <svg className="w-2 h-2 md:w-2.5 md:h-2.5" fill="none" stroke="#6b7280" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
-                        <path d="M5 12h14M13 6l6 6-6 6" />
-                      </svg>
-                    );
-                  } else if (wasUsed) {
-                    base += ' bg-red-500/20 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.2)]';
-                    icon = (
-                      <svg className="w-2 h-2 md:w-2.5 md:h-2.5" fill="none" stroke="#f87171" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
-                        <path d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    );
-                  } else {
-                    base += ' bg-white/[0.04] border-white/[0.08]';
-                  }
-
-                  return (
-                    <div key={i} style={style} className={`flex-1 h-6 md:h-8 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-300 ${base}`}>
-                      {icon}
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Progress bar - hidden on mobile, horizontal on desktop */}
-              <div className="hidden md:block h-0.5 rounded-full bg-white/[0.06] overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-[#1DB954] to-[#1ed760] transition-all duration-500"
-                  style={{ width: `${(gameState.guesses.length / gameState.maxGuesses) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Play Again button - desktop only, under progress bar */}
-            {isGameOver && (
-              <button
-                onClick={handlePlayAgain}
-                className="hidden md:block w-full py-3.5 bg-gradient-to-r from-[#1DB954] to-[#1ed760] hover:from-[#1ed760] hover:to-[#1DB954] text-white font-bold text-sm rounded-xl transition-all duration-200 shadow-lg shadow-[#1DB954]/20"
-              >
-                {playAgainLabel}
-              </button>
-            )}
-          </div>
-
-          {/* ── RIGHT: Hints / game over + guesses + input ── */}
-          <div className="flex flex-col gap-4">
-            {isGameOver ? (
-              <GameOver
-                won={gameState.gameStatus === 'won'}
-                albumName={gameState.currentAlbum.name}
-                artistNames={gameState.currentAlbum.mainArtists}
-                albumUri={gameState.currentAlbum.uri}
-                guessCount={gameState.guesses.length}
-                guesses={gameState.guesses}
-                maxGuesses={gameState.maxGuesses}
-                hints={gameState.hintsRevealed}
-                albums={albums}
-                currentAlbum={gameState.currentAlbum}
-                streak={gameState.gameStatus === 'won' ? streak : lostStreak}
-                goal={goal}
-                gauntletComplete={gauntletComplete}
-                gauntletFailed={gauntletFailed}
-                playAgainLabel={playAgainLabel}
-                onPlayAgain={handlePlayAgain}
-              />
-            ) : (
-              <>
-                {/* Hints panel - order-2 on both mobile and desktop */}
-                <div className="order-2">
-                  <HintDisplay
-                    hints={gameState.hintsRevealed}
-                    currentGuess={gameState.guesses.length}
-                    maxGuesses={gameState.maxGuesses}
-                    accessToken={accessToken}
-                  />
-                </div>
-
-                {/* Previous guesses - order-3 on both mobile and desktop */}
-                {gameState.guesses.length > 0 && (
-                  <div className="order-3 bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
-                    <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-3">Previous Guesses</p>
-                    <div className="flex flex-wrap gap-2">
-                      {gameState.guesses.map((g, i) => {
-                        // Handle skipped turns
-                        if (g === '__skip__') {
-                          return (
-                            <span key={i} className="inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-xs font-medium bg-white/[0.06] border border-white/[0.1] text-gray-500">
-                              <svg width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
-                                <path d="M5 12h14M13 6l6 6-6 6" />
-                              </svg>
-                              Skipped
-                            </span>
-                          );
-                        }
-
-                        // Try to find matching album from user's library
-                        const matchedAlbum = findMatchingAlbum(g, albums);
-
-                        // Check if artist matches the current album
-                        const artistMatches = matchedAlbum && hasMatchingArtist(matchedAlbum, gameState.currentAlbum);
-
-                        // Display text: "Artist - Album" if matched, otherwise just the guess
-                        const displayText = matchedAlbum
-                          ? `${matchedAlbum.mainArtists.join(', ')} - ${matchedAlbum.name}`
-                          : g;
-
-                        // Color: yellow if artist matches, red otherwise
-                        const colorClasses = artistMatches
-                          ? 'bg-yellow-500/15 border-yellow-500/30 text-yellow-400'
-                          : 'bg-red-500/10 border-red-500/25 text-red-400';
-
-                        return (
-                          <span
-                            key={i}
-                            className={`inline-flex items-center gap-1.5 pl-2 pr-3 py-1 rounded-full text-xs font-medium ${colorClasses}`}
-                          >
-                            <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
-                              <path d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            {displayText}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Guess input - order-1 on both mobile and desktop */}
-                <div className="order-1 bg-white/[0.03] border border-white/[0.07] rounded-2xl p-4">
-                  <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-3">Your Guess</p>
-                  <GuessInput
-                    key={gameState.currentAlbum.id}
-                    onGuess={handleGuess}
-                    onSkipHint={handleSkipHint}
-                    disabled={false}
-                    allAlbums={albums}
-                    currentAlbumId={gameState.currentAlbum.id}
-                    ultraHard={ultraHard}
-                  />
-                </div>
-
-                {/* Skip - order-4, centered. Hidden in gauntlet mode (skipping would end the run). */}
-                {!gauntletActive && (
-                  <div className="order-4 flex justify-center">
-                    <button
-                      onClick={requestSkip}
-                      className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-400 border border-white/[0.08] hover:border-white/[0.14] rounded-lg transition-all"
-                    >
-                      Skip this album →
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
+            return <div key={i} className={`flex-1 h-1.5 rounded-full transition-colors duration-300 ${color}`} />;
+          })}
         </div>
-      </main>
+
+        {isGameOver ? (
+          <GameOver
+            won={gameState.gameStatus === 'won'}
+            album={gameState.currentAlbum}
+            guessCount={gameState.guesses.length}
+            guesses={gameState.guesses}
+            albums={albums}
+            streak={gameState.gameStatus === 'won' ? streak : lostStreak}
+            goal={goal}
+            gauntletComplete={gauntletComplete}
+            gauntletFailed={gauntletFailed}
+            playAgainLabel={playAgainLabel}
+            onPlayAgain={handlePlayAgain}
+            onHome={onHome}
+          />
+        ) : (
+          <>
+            {/* Guess input */}
+            <div className="mb-4">
+              <GuessInput
+                key={gameState.currentAlbum.id}
+                onGuess={handleGuess}
+                onSkipHint={handleSkipHint}
+                disabled={false}
+                allAlbums={albums}
+                currentAlbumId={gameState.currentAlbum.id}
+                ultraHard={ultraHard}
+              />
+            </div>
+
+            {/* Liner notes / hints */}
+            <HintDisplay
+              hints={gameState.hintsRevealed}
+              currentGuess={gameState.guesses.length}
+              maxGuesses={gameState.maxGuesses}
+            />
+
+            {/* Skip - hidden in gauntlet mode (skipping would end the run) */}
+            {!gauntletActive && (
+              <div className="flex-1 flex flex-col justify-end items-center pt-6">
+                <button
+                  onClick={requestSkip}
+                  className="px-4 py-2 text-sm font-semibold text-ink-soft hover:text-ink transition-colors"
+                >
+                  Skip this album →
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Skip confirmation modal - only shown when skipping would break a streak */}
       {showSkipConfirm && (
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-ink/40 backdrop-blur-sm flex items-center justify-center p-4 z-50"
           onClick={() => setShowSkipConfirm(false)}
         >
           <div
-            className="bg-[#0f0f0f] border border-white/[0.1] rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center"
+            className="bg-cream border border-ink/10 rounded-3xl max-w-sm w-full p-6 shadow-[0_24px_60px_rgba(43,33,26,0.35)] text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 rounded-full bg-orange-500/15 border border-orange-500/40 flex items-center justify-center text-orange-400">
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2c.5 3-1.5 4.5-2.8 6C7.7 9.8 7 11.4 7 13a5 5 0 0 0 10 .3c.1-2.2-1-4.2-2.3-5.6.3 1.4-.2 2.4-1 2.9.3-2.6-.9-5.3-1.7-8.6z" />
-                </svg>
-              </div>
-            </div>
-            <h2 className="text-xl font-bold text-white mb-2">Skip this album?</h2>
-            <p className="text-sm text-gray-400 mb-6">
-              You're on a streak of <span className="font-bold text-orange-400">{streak}</span>. Skipping will end your
-              streak and reset it to 0.
+            <p className="font-display font-black text-2xl text-ink mb-2">Skip this album?</p>
+            <p className="text-sm text-ink-soft mb-6">
+              You're on a streak of <span className="font-bold text-accent-deep">{streak}</span>. Skipping resets it
+              to zero.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowSkipConfirm(false)}
-                className="flex-1 px-4 py-2.5 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.1] text-white font-semibold text-sm rounded-lg transition-all"
+                className="flex-1 px-4 py-3 bg-ink text-cream font-bold text-sm rounded-full hover:bg-ink/90 transition-all"
               >
                 Keep playing
               </button>
               <button
                 onClick={confirmSkip}
-                className="flex-1 px-4 py-2.5 bg-red-500/90 hover:bg-red-500 text-white font-semibold text-sm rounded-lg transition-all"
+                className="flex-1 px-4 py-3 bg-cream border border-ink/15 text-ink font-bold text-sm rounded-full hover:border-ink/35 transition-all"
               >
                 Skip anyway
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Help Modal */}
-      {showHelpModal && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-          onClick={() => setShowHelpModal(false)}
-        >
-          <div
-            className="bg-[#0f0f0f] border border-white/[0.1] rounded-2xl max-w-md w-full p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">How to Play</h2>
-              <button
-                onClick={() => setShowHelpModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-                aria-label="Close"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                  <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4 text-sm text-gray-300">
-              <div>
-                <h3 className="font-semibold text-white mb-2">Objective</h3>
-                <p>Guess the album from your Liked Songs Spotify library in 5 tries or less.</p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-white mb-2">Game Modes</h3>
-                <ul className="space-y-2 ml-4">
-                  <li className="flex gap-2">
-                    <span className="text-[#1DB954]">•</span>
-                    <div>
-                      <strong className="text-white">Blur:</strong> The album cover starts heavily blurred and becomes clearer with each guess.
-                    </div>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="text-[#1DB954]">•</span>
-                    <div>
-                      <strong className="text-white">Tile:</strong> The album cover is divided into tiles. One tile reveals with each guess.
-                    </div>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-white mb-2">Hints</h3>
-                <p>After each incorrect guess, you'll receive a hint about the album (release year, track count, artist info, etc.).</p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-white mb-2">Skip Hint</h3>
-                <p>Use the "Skip for hint" button to skip a guess and reveal the next hint without submitting an answer.</p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-white mb-2">Guess Indicators</h3>
-                <ul className="space-y-1.5 ml-4">
-                  <li className="flex gap-2">
-                    <span className="text-green-400">✓</span>
-                    <span>Green = Correct guess</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="text-yellow-400">✕</span>
-                    <span>Yellow = Wrong album, but same artist</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="text-red-400">✕</span>
-                    <span>Red = Wrong album and artist</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span className="text-gray-400">→</span>
-                    <span>Gray = Skipped for hint</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowHelpModal(false)}
-              className="w-full mt-6 px-4 py-2.5 bg-[#1DB954] hover:bg-[#1ed760] text-white font-semibold rounded-lg transition-colors"
-            >
-              Got it!
-            </button>
-
-            <div className="mt-4 text-left">
-              <p className="text-xs text-gray-600">
-                Made by{' '}
-                <a
-                  href="https://github.com/pmarch11"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-500 hover:text-[#1DB954] transition-colors underline"
-                >
-                  Patric Marchant
-                </a>
-              </p>
             </div>
           </div>
         </div>

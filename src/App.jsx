@@ -1,9 +1,24 @@
 import { useState } from 'react';
 import { Login } from './components/Login';
+import { Disc } from './components/Disc';
 import { Home } from './components/Home';
 import { Game } from './components/Game';
 import { useSpotifyAuth } from './hooks/useSpotifyAuth';
 import { useSpotifyAPI, clearAlbumCache } from './hooks/useSpotifyAPI';
+
+function SpinningDisc({ label, sublabel }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-paper px-4">
+      <div className="text-center">
+        <div className="flex justify-center mb-6">
+          <Disc className="w-32 h-32" />
+        </div>
+        <p className="text-lg font-semibold text-ink">{label}</p>
+        {sublabel && <p className="text-sm text-ink-soft mt-1">{sublabel}</p>}
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const { accessToken, isAuthenticated, isLoading: authLoading, error: authError, login, logout } = useSpotifyAuth();
@@ -22,13 +37,7 @@ function App() {
 
   // Show loading state during authentication
   if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
-        <div className="text-center">
-          <p className="text-xl text-gray-300">Loading...</p>
-        </div>
-      </div>
-    );
+    return <SpinningDisc label="Loading…" />;
   }
 
   // Show login screen if not authenticated
@@ -40,22 +49,22 @@ function App() {
   if (albumsError) {
     console.error('Album fetch error:', albumsError);
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black px-4">
+      <div className="min-h-screen flex items-center justify-center bg-paper px-4">
         <div className="max-w-md text-center">
-          <h2 className="text-2xl font-bold text-red-400 mb-4">Something went wrong</h2>
-          <p className="text-gray-400 text-sm mb-6">{albumsError}</p>
+          <h2 className="font-display font-black text-3xl text-ink mb-3">Something went wrong</h2>
+          <p className="text-ink-soft text-sm mb-6">{albumsError}</p>
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => window.location.reload()}
-              className="px-6 py-3 bg-[#1DB954] hover:bg-[#1ed760] text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-accent hover:bg-accent-deep text-cream font-bold rounded-full transition-all"
             >
-              Try Again
+              Try again
             </button>
             <button
               onClick={handleLogout}
-              className="px-6 py-3 bg-white/[0.08] hover:bg-white/[0.12] text-white rounded-lg transition-colors"
+              className="px-6 py-3 bg-cream border border-ink/15 hover:border-ink/35 text-ink font-bold rounded-full transition-all"
             >
-              Log Out
+              Log out
             </button>
           </div>
         </div>
@@ -71,30 +80,16 @@ function App() {
   // Game started before the library finished loading — wait for it here
   if (albums.length === 0) {
     if (albumsLoading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
-          <div className="text-center">
-            <p className="text-xl text-gray-300 mb-2">Loading your albums...</p>
-            <p className="text-sm text-gray-500">This may take a moment</p>
-          </div>
-        </div>
-      );
+      return <SpinningDisc label="Loading your albums…" sublabel="This may take a moment" />;
     }
 
     // Fallback - no albums and not loading
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 to-black">
-        <div className="text-center">
-          <p className="text-xl text-gray-300">No albums found</p>
-        </div>
-      </div>
-    );
+    return <SpinningDisc label="No albums found" sublabel="Like some songs on Spotify first" />;
   }
 
   return (
     <Game
       albums={albums}
-      accessToken={accessToken}
       mode={session.mode}
       goal={session.goal}
       ultraHard={session.ultraHard}

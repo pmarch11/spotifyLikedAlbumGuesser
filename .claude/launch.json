@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "./node_modules/.bin/vite",
+      "runtimeArgs": [],
+      "port": 8080,
+      "autoPort": false
+    }
+  ]
+}
