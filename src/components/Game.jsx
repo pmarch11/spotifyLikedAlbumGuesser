@@ -202,9 +202,9 @@ export function Game({ albums, mode, goal, ultraHard, onHome }) {
 
   return (
     <div className="min-h-screen bg-paper flex flex-col px-5 py-6">
-      <div className="w-full max-w-md mx-auto flex-1 flex flex-col">
+      <div className="w-full flex-1 flex flex-col">
         {/* Header */}
-        <header className="grid grid-cols-[auto_1fr_auto] items-center gap-3 mb-5">
+        <header className="w-full max-w-md mx-auto grid grid-cols-[auto_1fr_auto] items-center gap-3 mb-5">
           <button
             onClick={onHome}
             aria-label="Back to setup"
@@ -230,12 +230,14 @@ export function Game({ albums, mode, goal, ultraHard, onHome }) {
 
         {/* Album art — on desktop, cap the square against viewport height so the
             whole screen (header, results, actions) fits without scrolling.
-            Game over needs more room below the art than guessing does. */}
+            While guessing it also stays within the 28rem content column; on game
+            over that clamp is dropped so the art can grow past the column and
+            fill whatever space the viewport height allows. */}
         <div
-          className={`relative mb-3 mx-auto w-full transition-[max-width] duration-500 ease-out ${
+          className={`relative mb-3 mx-auto w-full max-w-md transition-[max-width] duration-500 ease-out ${
             isGameOver
-              ? 'sm:max-w-[max(14rem,min(100%,calc(100dvh-31rem)))]'
-              : 'sm:max-w-[max(14rem,min(100%,calc(100dvh-28rem)))]'
+              ? 'sm:max-w-[max(14rem,min(100%,calc(100dvh-32rem)))]'
+              : 'sm:max-w-[max(14rem,min(28rem,calc(100dvh-28rem)))]'
           }`}
         >
           <TiltedCover enabled={isGameOver}>
@@ -255,6 +257,8 @@ export function Game({ albums, mode, goal, ultraHard, onHome }) {
           )}
         </div>
 
+        {/* Everything below the art stays in the regular content column */}
+        <div className="w-full max-w-md mx-auto flex-1 flex flex-col">
         {/* Guess progress segments */}
         <div className="flex gap-1.5 mb-5">
           {Array.from({ length: gameState.maxGuesses }).map((_, i) => {
@@ -331,6 +335,7 @@ export function Game({ albums, mode, goal, ultraHard, onHome }) {
             )}
           </>
         )}
+        </div>
       </div>
 
       {/* Skip confirmation modal - only shown when skipping would break a streak */}
