@@ -32,7 +32,8 @@ export function Game({ albums, mode, goal, ultraHard, onHome }) {
   const [streak, setStreak] = useState(0);
   // Streak value at the moment it was broken, so the loss screen can show it
   const [lostStreak, setLostStreak] = useState(0);
-  // Which album of this run we're on, shown in the header ("Album 7 · Endless")
+  // Which album of this run we're on — the "3" in the gauntlet header's "3/10".
+  // Resets to 1 whenever a finished gauntlet run restarts.
   const [round, setRound] = useState(1);
 
   // Albums are loaded before Game mounts, so the first round can be created
@@ -50,7 +51,7 @@ export function Game({ albums, mode, goal, ultraHard, onHome }) {
     localStorage.setItem('discStreak', String(streak));
   }, [streak]);
 
-  const startNewGame = useCallback(() => {
+  const startNewGame = useCallback((resetRound = false) => {
     const played = playedAlbumIdsRef.current;
     let pool = albums.filter((a) => !played.has(a.id));
     if (pool.length === 0) {
@@ -61,17 +62,19 @@ export function Game({ albums, mode, goal, ultraHard, onHome }) {
     const next = newGame(pool);
     if (!next.currentAlbum) return;
     played.add(next.currentAlbum.id);
-    setRound((r) => r + 1);
+    setRound((r) => (resetRound ? 1 : r + 1));
     setGameState(next);
   }, [albums]);
 
   // Continue / restart after an album ends. In a gauntlet, a finished run
-  // (failed, or goal reached) resets the streak; a mid-run win keeps it going.
+  // (failed, or goal reached) resets the streak and round; a mid-run win keeps
+  // them going.
   const handlePlayAgain = useCallback(() => {
-    if (goal != null && (gameState.gameStatus === 'lost' || streak >= goal)) {
+    const runEnded = goal != null && (gameState.gameStatus === 'lost' || streak >= goal);
+    if (runEnded) {
       setStreak(0);
     }
-    startNewGame();
+    startNewGame(runEnded);
   }, [goal, gameState.gameStatus, streak, startNewGame]);
 
   // Listen for Enter key on game over screen
@@ -203,41 +206,47 @@ export function Game({ albums, mode, goal, ultraHard, onHome }) {
   return (
     <div className="min-h-screen bg-paper flex flex-col px-5 py-6">
       <div className="w-full flex-1 flex flex-col">
-        {/* Header */}
-        <header className="w-full max-w-md mx-auto grid grid-cols-[auto_1fr_auto] items-center gap-3 mb-5">
+        {/* Header — equal 1fr side columns keep the middle label truly centered
+            even when the right chip is much wider than the close button */}
+        <header className="w-full max-w-md mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-3 mb-5">
           <button
             onClick={onHome}
             aria-label="Back to setup"
-            className="w-9 h-9 flex items-center justify-center bg-cream border border-ink/12 rounded-full text-ink-soft hover:text-ink hover:border-ink/30 transition-all"
+            className="justify-self-start w-9 h-9 flex items-center justify-center bg-cream border border-ink/12 rounded-full text-ink-soft hover:text-ink hover:border-ink/30 transition-all"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
               <path strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
           <span className="eyebrow text-ink/60 text-center">
-            Album {round} · {gauntletActive ? `Gauntlet of ${goal}` : 'Endless'}
+            {gauntletActive ? `${round}/${goal}` : 'Endless'}
           </span>
           {gameState.gameStatus === 'lost' ? (
-            <span className="px-3 py-1 bg-cream border border-ink/10 rounded-full eyebrow text-ink/50">
+            <span className="justify-self-end whitespace-nowrap px-3 py-1 bg-cream border border-ink/10 rounded-full eyebrow text-ink/50">
               <span className="text-accent">◆</span> Streak reset
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 px-3 py-1 bg-cream border border-ink/10 rounded-full eyebrow text-accent-deep">
+            <span className="justify-self-end whitespace-nowrap flex items-center gap-1.5 px-3 py-1 bg-cream border border-ink/10 rounded-full eyebrow text-accent-deep">
               <span className="text-accent">◆</span> {gauntletActive ? `${streak}/${goal}` : streak}
             </span>
           )}
         </header>
 
-        {/* Album art — on desktop, cap the square against viewport height so the
-            whole screen (header, results, actions) fits without scrolling.
-            While guessing it also stays within the 28rem content column; on game
-            over that clamp is dropped so the art can grow past the column and
-            fill whatever space the viewport height allows. */}
+        {/* Album art — cap the square so the whole screen (header, results,
+            actions) fits without scrolling. On mobile the square's height is
+            bound by its width, not the viewport, so at game over we shrink it to
+            a smaller cap to leave room for the result card and the primary
+            action; a very short viewport shrinks it further still. Desktop keeps
+            the viewport-height clamp, dropping the 28rem column limit on game
+            over so the art can grow to fill the available height.
+            No max-width transition: browsers can't interpolate between these
+            min()/max()/calc() values and freeze at the start size, which would
+            leave the mobile art full-width (pushing the action below the fold). */}
         <div
-          className={`relative mb-3 mx-auto w-full max-w-md transition-[max-width] duration-500 ease-out ${
+          className={`relative mb-3 mx-auto w-full ${
             isGameOver
-              ? 'sm:max-w-[max(14rem,min(100%,calc(100dvh-32rem)))]'
-              : 'sm:max-w-[max(14rem,min(28rem,calc(100dvh-28rem)))]'
+              ? 'max-w-[max(12rem,min(18rem,calc(100dvh-24rem)))] sm:max-w-[max(14rem,min(100%,calc(100dvh-32rem)))]'
+              : 'max-w-md sm:max-w-[max(14rem,min(28rem,calc(100dvh-28rem)))]'
           }`}
         >
           <TiltedCover enabled={isGameOver}>
